@@ -8,8 +8,15 @@ const file = path.resolve(config.databasePath);
 fs.mkdirSync(path.dirname(file), { recursive: true });
 
 export const db = new Database(file);
+// WAL permite vários leitores junto com um escritor — condição necessária para
+// rodar com sharding, onde cada shard é um processo com sua própria conexão.
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+// Sem isto, uma escrita concorrente de outro shard falharia na hora com
+// SQLITE_BUSY; com o timeout, ela espera o lock liberar (até 5s).
+db.pragma('busy_timeout = 5000');
+// NORMAL é seguro em WAL e reduz bastante o fsync sob escrita concorrente.
+db.pragma('synchronous = NORMAL');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS guilds (

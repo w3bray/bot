@@ -1,28 +1,36 @@
 import { ActivityType, Events } from 'discord.js';
 import { logger } from '../lib/logger.js';
+import { shardLabel, totalGuilds } from '../lib/shard.js';
 
 export default {
   name: Events.ClientReady,
   once: true,
-  execute(client) {
-    logger.info(`Conectado como ${client.user.tag}`);
-    logger.info(
-      `Servindo ${client.guilds.cache.size} servidor(es) e ${client.users.cache.size} usuário(s) em cache.`,
-    );
+  async execute(client) {
+    logger.info(`Conectado como ${client.user.tag} (${shardLabel(client)})`);
+    logger.info(`Este processo atende ${client.guilds.cache.size} servidor(es).`);
 
-    const updatePresence = () => {
+    const updatePresence = async () => {
+      // Mostra o total de todos os shards; se algum ainda não respondeu, cai
+      // para a contagem local em vez de deixar a presença sem atualizar.
+      const { total } = await totalGuilds(client);
+
       client.user.setPresence({
         status: 'online',
         activities: [
           {
-            name: `/ajuda · ${client.guilds.cache.size} servidores`,
+            name: `/ajuda · ${total} servidores`,
             type: ActivityType.Watching,
           },
         ],
       });
     };
 
-    updatePresence();
-    setInterval(updatePresence, 600_000).unref();
+    await updatePresence().catch((error) =>
+      logger.debug('Não consegui definir a presença:', error.message),
+    );
+
+    setInterval(() => {
+      updatePresence().catch(() => null);
+    }, 600_000).unref();
   },
 };

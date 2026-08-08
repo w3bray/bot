@@ -16,6 +16,7 @@ carregamento automático de comandos, eventos e botões.
 - [Configuração no Discord](#configuração-no-discord)
 - [Primeiros passos no servidor](#primeiros-passos-no-servidor)
 - [Lista de comandos](#lista-de-comandos)
+- [Sharding](#sharding)
 - [Comando de IA](#comando-de-ia)
 - [Estrutura do projeto](#estrutura-do-projeto)
 - [Como adicionar um comando](#como-adicionar-um-comando)
@@ -66,10 +67,11 @@ Preencha o `.env` (veja a seção seguinte), registre os comandos e inicie:
 
 ```bash
 npm run deploy   # registra os slash commands
-npm start        # liga o bot
+npm start        # liga o bot (com sharding automático)
 ```
 
-Durante o desenvolvimento, `npm run dev` reinicia o bot a cada alteração de arquivo.
+Durante o desenvolvimento, `npm run dev` reinicia o bot a cada alteração de arquivo,
+em processo único. Veja também [Sharding](#sharding).
 
 ---
 
@@ -102,6 +104,7 @@ Enviar Mensagens, Inserir Links, Anexar Arquivos e Adicionar Reações.
 | `OWNER_IDS` | não | IDs dos donos, separados por vírgula. Ignoram os cooldowns |
 | `DATABASE_PATH` | não | Caminho do arquivo SQLite (padrão `./data/bot.db`) |
 | `LOG_LEVEL` | não | `debug`, `info`, `warn` ou `error` |
+| `SHARDING` | não | `auto` (padrão), `off` ou um número. Veja [Sharding](#sharding) |
 | `ANTHROPIC_API_KEY` | não | Ativa o comando `/ia`. Sem ela o comando avisa que está desligado |
 | `ANTHROPIC_MODEL` | não | Modelo usado pelo `/ia` (padrão `claude-opus-5`) |
 
@@ -215,6 +218,42 @@ Detalhes da implementação (`src/services/ai.js`):
 
 ---
 
+## Sharding
+
+O Discord exige que um bot seja dividido em **shards** a partir de ~2.500 servidores;
+cada shard é uma conexão que cuida de uma fatia dos servidores. Aqui cada shard roda em
+um processo separado, supervisionado por `src/sharding.js`.
+
+```bash
+npm start              # SHARDING=auto: o Discord informa quantos shards usar
+SHARDING=off npm start # processo único (o mesmo que npm run start:single)
+SHARDING=4 npm start   # força 4 shards
+```
+
+A distribuição segue a fórmula oficial `(guild_id >> 22) % total_shards`, então um
+servidor cai **sempre** no mesmo shard.
+
+**O que precisou mudar no código** (sharding não é só ligar um interruptor):
+
+| Ponto | Problema se ignorado | Solução |
+|---|---|---|
+| Opções do Client | O discord.js **não** lê `SHARDS`/`SHARD_COUNT` do ambiente sozinho — `shardCount` tem padrão `1`. Todo processo se conectaria como "shard 0 de 1" e receberia **todos** os servidores, duplicando XP, punições e eventos | `src/index.js` repassa as duas variáveis explicitamente |
+| Agendador | Todo processo roda o laço de lembretes/sorteios/enquetes. Com 8 shards, o mesmo sorteio seria encerrado 8 vezes | Cada item é filtrado por `ownsGuild()`; lembretes de DM (sem servidor) ficam com o shard 0, para ter exatamente um dono |
+| SQLite | Vários processos escrevendo no mesmo arquivo esbarram em `SQLITE_BUSY` | WAL + `busy_timeout = 5000` + `synchronous = NORMAL` |
+| Contadores | `client.guilds.cache.size` é só a fatia local, então `/botinfo` e a presença mostrariam números errados | `broadcastEval` soma entre shards; se algum ainda não respondeu, cai para o número local e marca como *(parcial)* |
+| Logs | Vários processos escrevendo no mesmo terminal | Prefixo `[shard N]` em cada linha |
+
+**O que continua por processo, de propósito:** o estado das partidas, o `/snipe`, o
+histórico do antispam e os cooldowns. Como um servidor mora sempre no mesmo shard, isso
+funciona — a única consequência é que o cooldown de um comando é contado por shard, o
+que só aparece para quem usa o bot em servidores de shards diferentes.
+
+**Quando usar `off`:** desenvolvimento e bots pequenos. Abaixo de ~2.000 servidores o
+processo supervisor só adiciona consumo de memória sem benefício.
+
+**Aviso sobre `npm run dev`:** ele roda em processo único de propósito, porque
+`--watch` reiniciando processos filhos junto com o supervisor gera reinícios em cascata.
+
 ## Download de vídeos (`/baixar`)
 
 O comando puxa o vídeo de um link e envia como anexo no canal. Ele depende de dois
@@ -260,7 +299,8 @@ para o bot não virar um proxy para a rede onde está hospedado.
 
 ```
 src/
-├── index.js              # cria o client, carrega tudo e conecta
+├── sharding.js           # supervisor: cria e reinicia os shards
+├── index.js              # um shard: cria o client, carrega tudo e conecta
 ├── config.js             # lê o .env, cores e emojis padrão
 ├── commands/             # um arquivo por comando; a pasta define a categoria
 │   ├── moderacao/  configuracao/  utilidades/
@@ -274,7 +314,7 @@ src/
 │   ├── tickets.js  giveaways.js polls.js     starboard.js
 │   ├── scheduler.js  ai.js
 ├── handlers/loader.js    # carregamento automático dos arquivos acima
-└── lib/                  # utilidades: db, logger, embeds, tempo, cooldown, permissões
+└── lib/                  # utilidades: db, logger, embeds, tempo, cooldown, permissões, shard
 scripts/deploy-commands.js
 ```
 
@@ -352,6 +392,8 @@ em 10 minutos.
 | `/baixar` diz que não está disponível | `yt-dlp` não está no PATH do processo do bot |
 | `/baixar` reclama de tamanho | O vídeo passou do teto de upload do servidor. Use `audio: true` ou aumente o nível de impulso |
 | Comandos personalizados não respondem | O prefixo mudou (veja `/config ver`) ou falta a **Message Content Intent** |
+| Sorteio encerrado várias vezes | Sinal de shards recebendo os mesmos servidores — confira se `SHARDS`/`SHARD_COUNT` não foram definidos à mão no `.env` (essas variáveis pertencem ao discord.js; a sua é `SHARDING`) |
+| `/botinfo` mostra *(parcial)* | Algum shard ainda estava iniciando quando o comando rodou. Tente de novo em alguns segundos |
 | Erro ao instalar `better-sqlite3` | Node abaixo da versão 20, ou faltam ferramentas de compilação para o *build* nativo |
 
 ---

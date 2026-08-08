@@ -19,11 +19,30 @@ function list(name) {
     .filter(Boolean);
 }
 
+/**
+ * Quantidade de shards: 'auto' (o Discord decide), 'off' (processo único) ou um
+ * número. Repare que a variável se chama SHARDING, e não SHARDS/SHARD_COUNT:
+ * esses dois nomes são usados internamente pelo ShardingManager do discord.js
+ * para identificar cada processo filho, e sobrescrevê-los quebraria o roteamento.
+ */
+function shardingMode() {
+  const raw = (process.env.SHARDING ?? 'auto').trim().toLowerCase();
+  if (raw === 'auto' || raw === 'off') return raw;
+
+  const amount = Number(raw);
+  if (!Number.isInteger(amount) || amount < 1) {
+    console.error(`\n[config] SHARDING inválido: "${raw}". Use "auto", "off" ou um inteiro ≥ 1.\n`);
+    process.exit(1);
+  }
+  return String(amount);
+}
+
 export const config = {
   token: required('DISCORD_TOKEN'),
   clientId: required('CLIENT_ID'),
   guildId: process.env.GUILD_ID?.trim() || null,
   ownerIds: list('OWNER_IDS'),
+  sharding: shardingMode(),
   databasePath: process.env.DATABASE_PATH?.trim() || './data/bot.db',
   logLevel: process.env.LOG_LEVEL?.trim() || 'info',
   anthropic: {

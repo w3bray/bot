@@ -8,7 +8,18 @@ import { startSchedulers } from './services/scheduler.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+// Quando o ShardingManager cria o processo, ele passa SHARDS (id deste shard) e
+// SHARD_COUNT (total) por variável de ambiente — mas o discord.js NÃO lê essas
+// variáveis sozinho: o padrão de `shardCount` é 1. Sem repassar explicitamente,
+// todo processo se conectaria como "shard 0 de 1" e receberia todos os
+// servidores, duplicando eventos, XP e punições.
+const managed = Boolean(process.env.SHARDING_MANAGER);
+const shardOptions = managed
+  ? { shards: [Number(process.env.SHARDS)], shardCount: Number(process.env.SHARD_COUNT) }
+  : {};
+
 const client = new Client({
+  ...shardOptions,
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,

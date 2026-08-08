@@ -8,7 +8,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "start": "node src/index.js",
+    "start": "node src/sharding.js",
+    "start:single": "node src/index.js",
     "dev": "node --watch src/index.js",
     "deploy": "node scripts/deploy-commands.js",
     "deploy:global": "node scripts/deploy-commands.js --global",

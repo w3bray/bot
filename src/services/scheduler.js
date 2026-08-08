@@ -1,12 +1,19 @@
 import { db } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
 import { embed } from '../lib/embeds.js';
+import { ownsGuild, shardLabel } from '../lib/shard.js';
 import { endGiveaway, getDueGiveaways } from './giveaways.js';
 import { closePoll, getDuePolls } from './polls.js';
 
 const TICK_INTERVAL = 15_000;
 
-/** Inicia o laço que processa lembretes, sorteios e enquetes vencidos. */
+/**
+ * Inicia o laço que processa lembretes, sorteios e enquetes vencidos.
+ *
+ * Com sharding, TODOS os processos rodam este laço — por isso cada item só é
+ * processado pelo shard dono do servidor correspondente. Sem esse filtro, oito
+ * shards encerrariam o mesmo sorteio oito vezes.
+ */
 export function startSchedulers(client) {
   const tick = async () => {
     await Promise.allSettled([
@@ -18,11 +25,16 @@ export function startSchedulers(client) {
 
   tick();
   setInterval(tick, TICK_INTERVAL).unref();
-  logger.info(`Agendador ativo (verificação a cada ${TICK_INTERVAL / 1000}s).`);
+  logger.info(
+    `Agendador ativo (verificação a cada ${TICK_INTERVAL / 1000}s) · ${shardLabel(client)}.`,
+  );
 }
 
 async function processReminders(client) {
-  const due = db.prepare('SELECT * FROM reminders WHERE remind_at <= ?').all(Date.now());
+  const due = db
+    .prepare('SELECT * FROM reminders WHERE remind_at <= ?')
+    .all(Date.now())
+    .filter((reminder) => ownsGuild(client, reminder.guild_id));
 
   for (const reminder of due) {
     // Apaga primeiro: se o envio falhar, não queremos repetir para sempre.
@@ -54,7 +66,9 @@ async function processReminders(client) {
 }
 
 async function processGiveaways(client) {
-  for (const giveaway of getDueGiveaways()) {
+  const due = getDueGiveaways().filter((giveaway) => ownsGuild(client, giveaway.guild_id));
+
+  for (const giveaway of due) {
     await endGiveaway(client, giveaway.message_id).catch((error) =>
       logger.error('Falha ao encerrar sorteio:', error),
     );
@@ -62,7 +76,9 @@ async function processGiveaways(client) {
 }
 
 async function processPolls(client) {
-  for (const poll of getDuePolls()) {
+  const due = getDuePolls().filter((poll) => ownsGuild(client, poll.guild_id));
+
+  for (const poll of due) {
     await closePoll(client, poll.message_id).catch((error) =>
       logger.error('Falha ao encerrar enquete:', error),
     );
