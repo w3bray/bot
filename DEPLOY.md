@@ -35,6 +35,19 @@ imagem já traz `yt-dlp` e `ffmpeg` embutidos.
 
 ### 1. Alugue um VPS
 
+> ⚠️ **Compre VPS, não "hospedagem de site".** As mesmas empresas vendem os dois,
+> e o produto errado **não roda bot nenhum**.
+>
+> | Produto | Roda o bot? |
+> |---|---|
+> | Hospedagem de sites / compartilhada / WordPress | ❌ Não. Só serve para site |
+> | **VPS** | ✅ Sim. É um Linux completo, com acesso root |
+>
+> Como saber que comprou o certo: você **escolhe o sistema** (Ubuntu 24.04) e
+> recebe **IP, usuário `root` e senha** para entrar por SSH. Se você cair num
+> painel com Gerenciador de Arquivos, WordPress e e-mail, e não houver senha de
+> root, é o produto errado — peça reembolso dentro do prazo de garantia.
+
 Peça a máquina **mais barata** com **Ubuntu 24.04**. Este bot usa cerca de 200 MB
 em operação, então **1 GB de RAM sobra** — não deixe vender máquina grande para
 você.
@@ -43,8 +56,8 @@ você.
 
 | Você tem | Onde olhar |
 |---|---|
-| Só Pix ou boleto | **Hostinger** e outros provedores nacionais — painel em português e pagamento em reais |
-| Cartão internacional | **Hetzner**, **Contabo**, **Vultr** — costumam sair mais baratos, mas cobram em euro ou dólar |
+| Só Pix ou boleto | Provedores nacionais como a **Hostinger** — painel em português e pagamento em reais. Procure a seção **VPS** do site, não a de hospedagem |
+| Cartão internacional | **Hetzner**, **Contabo**, **Vultr** — costumam sair mais baratos e vendem praticamente só VPS, então tem menos risco de clicar no produto errado. Cobram em euro ou dólar |
 
 > ⚠️ **A pegadinha do preço.** O valor baixo do anúncio quase sempre é para quem
 > paga **2 a 4 anos adiantado**. Escolhendo mês a mês, costuma dobrar ou
