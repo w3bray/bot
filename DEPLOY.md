@@ -20,7 +20,7 @@ dois caminhos, os dois controlados **pelo próprio celular**:
 
 | | Custo | Facilidade | Tudo funciona? |
 |---|---|---|---|
-| **[Opção A](#opção-a--vps-com-o-instalador-automático-recomendada)** — VPS | uns R$ 25/mês | 2 comandos | ✅ sim, incluindo `/baixar` |
+| **[Opção A](#opção-a--vps-com-o-instalador-automático-recomendada)** — VPS | a partir de uns R$ 25/mês | 2 comandos | ✅ sim, incluindo `/baixar` |
 | **[Opção B](#opção-b--hospedagem-gratuita-para-bots-sem-cartão-sem-terminal)** — painel grátis | R$ 0 | sem terminal, só cliques | ⚠️ sem `/baixar`, e precisa renovar |
 
 **Sem dinheiro? Vá direto para a Opção B.** Ela funciona, é a mais fácil de todas
@@ -35,11 +35,26 @@ imagem já traz `yt-dlp` e `ffmpeg` embutidos.
 
 ### 1. Alugue um VPS
 
-Qualquer provedor serve (Hetzner, DigitalOcean, Contabo, Vultr, Oracle Cloud…).
-Peça a máquina mais barata com **Ubuntu 24.04** — 1 GB de RAM sobra para este bot.
-Compare os preços atuais no site de cada um; eles mudam com frequência.
+Peça a máquina **mais barata** com **Ubuntu 24.04**. Este bot usa cerca de 200 MB
+em operação, então **1 GB de RAM sobra** — não deixe vender máquina grande para
+você.
+
+**Escolhendo do Brasil**, o que costuma decidir é a forma de pagamento:
+
+| Você tem | Onde olhar |
+|---|---|
+| Só Pix ou boleto | **Hostinger** e outros provedores nacionais — painel em português e pagamento em reais |
+| Cartão internacional | **Hetzner**, **Contabo**, **Vultr** — costumam sair mais baratos, mas cobram em euro ou dólar |
+
+> ⚠️ **A pegadinha do preço.** O valor baixo do anúncio quase sempre é para quem
+> paga **2 a 4 anos adiantado**. Escolhendo mês a mês, costuma dobrar ou
+> triplicar. Antes de fechar, olhe o **total da primeira cobrança**, não o preço
+> mensal da propaganda.
+
+Preços e planos mudam o tempo todo — confira no site antes de decidir.
 
 Ao final você recebe: um **IP**, um **usuário** (normalmente `root`) e uma **senha**.
+Diferente da Oracle, aqui não tem chave SSH nem formulário de rede.
 
 ### 2. Conecte pelo celular
 
