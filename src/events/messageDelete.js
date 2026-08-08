@@ -3,12 +3,16 @@ import { getGuildConfig } from '../lib/db.js';
 import { colors } from '../config.js';
 import { embed, truncate } from '../lib/embeds.js';
 import { sendToLog } from '../services/modcase.js';
+import { remember } from '../services/snipe.js';
 
 export default {
   name: Events.MessageDelete,
   async execute(message) {
     if (!message.guild || message.author?.bot) return;
     if (message.partial) return; // conteúdo não estava em cache: nada a registrar
+
+    // Guarda em memória para o /snipe, mesmo que os logs estejam desligados.
+    remember(message);
 
     const settings = getGuildConfig(message.guild.id);
     if (!settings.server_log_channel) return;

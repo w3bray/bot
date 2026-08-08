@@ -1,9 +1,10 @@
 # Bot de Discord multiuso
 
 Bot completo em **Node.js + discord.js v14**, com moderação, AutoMod, níveis, economia,
-tickets, sorteios, enquetes, logs, starboard, painel de cargos e um comando de IA.
+perfis sociais, tickets, sorteios, enquetes, jogos, logs, starboard, painel de cargos,
+download de vídeos e um comando de IA.
 
-Tudo em português do Brasil, com **39 slash commands**, persistência em SQLite e
+Tudo em português do Brasil, com **53 slash commands**, persistência em SQLite e
 carregamento automático de comandos, eventos e botões.
 
 ---
@@ -31,7 +32,10 @@ carregamento automático de comandos, eventos e botões.
 | 📋 **Casos** | Toda punição vira um caso numerado, gravado no banco e enviado ao canal de logs. Consulta por usuário ou por número |
 | 🤖 **AutoMod** | Anti-convite, anti-link, antispam, anti-CAPS, limite de menções e lista de palavras proibidas. Punição configurável (apagar, castigar, expulsar, banir) e isenção por cargo/canal |
 | 📈 **Níveis** | XP por mensagem com cooldown, curva progressiva, ranking, cargos entregues automaticamente ao subir de nível |
-| 🪙 **Economia** | Recompensa diária com sequência, trabalho, transferência entre membros, aposta e ranking de riqueza |
+| 🪙 **Economia** | Recompensa diária com sequência, trabalho, banco (cofre à prova de roubo), roubo com risco de multa, transferência, aposta, loja de distintivos e ranking de riqueza |
+| 💞 **Social** | Perfil completo com nível, patrimônio, reputação e distintivos; bio, reputação diária e casamento com pedido por botão |
+| 🎮 **Jogos** | Jogo da velha PvP no tabuleiro de botões e quiz de conhecimentos gerais que premia quem acerta primeiro |
+| 📥 **Download de vídeo** | `/baixar` puxa o vídeo de um link e envia no canal, com opção de extrair só o áudio |
 | 🎫 **Tickets** | Painel com botão, canal privado por atendimento, botões de assumir/fechar, transcrição enviada por DM e para o log |
 | 🎉 **Sorteios** | Botão de participação (clicar de novo cancela), exigência de cargo, encerramento automático e resorteio |
 | 📊 **Enquetes** | Até 5 opções, votação por botão, barra de resultados ao vivo, escolha única ou múltipla, encerramento automático |
@@ -39,8 +43,10 @@ carregamento automático de comandos, eventos e botões.
 | 👋 **Boas-vindas** | Mensagens de entrada e saída com marcadores, e cargo automático para novos membros |
 | 📜 **Logs** | Entradas, saídas, mensagens apagadas e editadas |
 | 🎭 **Painel de cargos** | Botões para o membro pegar e remover cargos sozinho |
+| 💡 **Sugestões** | Canal de sugestões com votação por botão e decisão da equipe |
+| 💬 **Comandos próprios** | A equipe cria respostas automáticas do servidor, acionadas por prefixo |
 | 🧠 **IA** | `/ia` responde perguntas usando a API da Anthropic (opcional) |
-| 🔧 **Utilidades** | Ping, userinfo, serverinfo, avatar, cargoinfo, botinfo, lembretes, AFK e ajuda navegável |
+| 🔧 **Utilidades** | Ping, userinfo, serverinfo, avatar, cargoinfo, botinfo, lembretes, AFK, snipe e ajuda navegável |
 | 🎲 **Diversão** | Bola 8, dados, escolher, pedra-papel-tesoura e ship |
 
 ---
@@ -167,16 +173,22 @@ Na mensagem de nível: `{user}`, `{username}`, `{level}`, `{server}`.
 ### 🔧 Utilidades
 
 `/ajuda` · `/ping` · `/userinfo` · `/serverinfo` · `/avatar` · `/cargoinfo` · `/botinfo` ·
-`/lembrete criar|listar|cancelar` · `/enquete` · `/afk`
+`/lembrete criar|listar|cancelar` · `/enquete` · `/afk` · `/snipe` ·
+`/sugestao enviar|decidir` · `/baixar`
+
+### 💞 Social
+
+`/perfil` · `/bio` · `/rep dar|top` · `/casar` · `/divorciar`
 
 ### 📈 Níveis e 🪙 Economia
 
-`/rank` · `/top niveis` · `/top moedas` · `/saldo` · `/daily` · `/trabalhar` · `/pagar` · `/apostar`
+`/rank` · `/top niveis` · `/top moedas` · `/saldo` · `/daily` · `/trabalhar` · `/pagar` ·
+`/apostar` · `/banco depositar|sacar` · `/roubar` · `/loja ver|comprar|inventario`
 
-### 🎫 Tickets, 🎉 Sorteios e 🎲 Diversão
+### 🎫 Tickets, 🎉 Sorteios, 🎮 Jogos e 🎲 Diversão
 
 `/ticket abrir|fechar|adicionar|painel` · `/sorteio criar|encerrar|resortear` ·
-`/bola8` · `/dado` · `/escolher` · `/ppt` · `/ship`
+`/velha` · `/quiz` · `/bola8` · `/dado` · `/escolher` · `/ppt` · `/ship`
 
 ### 🧠 IA
 
@@ -202,6 +214,47 @@ Detalhes da implementação (`src/services/ai.js`):
 - o comando tem **20 segundos de cooldown** por pessoa, para conter gastos.
 
 ---
+
+## Download de vídeos (`/baixar`)
+
+O comando puxa o vídeo de um link e envia como anexo no canal. Ele depende de dois
+programas externos que **não** vêm com o `npm install`:
+
+```bash
+# Debian/Ubuntu
+sudo apt install ffmpeg
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+
+# macOS
+brew install yt-dlp ffmpeg
+```
+
+Sem o `yt-dlp` no PATH o comando se desativa sozinho e avisa — nada mais quebra.
+O `ffmpeg` é necessário para juntar vídeo+áudio em alta resolução e para a opção
+`audio: true` (MP3).
+
+**Limites embutidos:** 15 minutos de duração, 3 minutos de execução, 2 downloads
+simultâneos, e o teto de upload do próprio servidor (10 MB, ou 50/100 MB com impulso
+nível 2/3). Transmissões ao vivo são recusadas.
+
+**Segurança:** o `yt-dlp` é chamado por `spawn` com lista de argumentos, nunca por
+shell — o link do usuário não vira comando. A URL é validada antes: só `http`/`https`,
+e endereços internos (`localhost`, faixas privadas, `169.254.169.254`) são bloqueados,
+para o bot não virar um proxy para a rede onde está hospedado.
+
+### Sobre marcas d'água
+
+- **Marca d'água da plataforma:** o comando já busca a versão limpa quando a própria
+  plataforma serve as duas — é o caso do TikTok, onde a variante marcada costuma vir
+  sob `download_addr`. O seletor de formato pede explicitamente a versão sem marca e só
+  cai para a marcada se for a única disponível. Onde a marca está queimada no vídeo pela
+  plataforma, não há versão limpa para pedir.
+- **Marca d'água do próprio criador:** isso **não** é removido, e foi uma decisão
+  deliberada. Essa marca é a assinatura de quem fez o vídeo; apagá-la serve basicamente
+  para republicar o trabalho de outra pessoa sem crédito. Por isso o embed de resposta
+  mostra o autor original e um lembrete sobre direitos autorais, em vez de esconder a
+  origem.
 
 ## Estrutura do projeto
 
@@ -270,7 +323,17 @@ atualizar o bot não apaga dados.
 
 Tabelas: `guilds`, `automod`, `cases`, `levels`, `level_rewards`, `economy`, `reminders`,
 `giveaways`, `giveaway_entries`, `tickets`, `starboard`, `role_buttons`, `polls`,
-`poll_votes`, `afk`.
+`poll_votes`, `afk`, `profiles`, `inventory`, `custom_commands`, `suggestions`,
+`suggestion_votes`.
+
+Colunas adicionadas depois da primeira versão entram por migração automática
+(`ALTER TABLE ... ADD COLUMN`, ignorando o erro de coluna já existente), então dá para
+atualizar o bot sem recriar o banco.
+
+Duas coisas ficam **só em memória**, de propósito: o estado das partidas de
+`/velha` e `/quiz` (efêmero por natureza) e o `/snipe`, porque conteúdo apagado é
+sensível e não deve sobreviver a um reinício nem ir para o disco — ele também expira
+em 10 minutos.
 
 **Backup:** basta copiar a pasta `data/` com o bot desligado.
 
@@ -286,6 +349,9 @@ Tabelas: `guilds`, `automod`, `cases`, `levels`, `level_rewards`, `economy`, `re
 | Boas-vindas e autorole não funcionam | **Server Members Intent** desativado |
 | Starboard não posta | O bot precisa ver o canal de origem, ter histórico de mensagens e permissão de envio no canal do mural |
 | `/ia` diz que não está configurado | Falta `ANTHROPIC_API_KEY` no `.env` |
+| `/baixar` diz que não está disponível | `yt-dlp` não está no PATH do processo do bot |
+| `/baixar` reclama de tamanho | O vídeo passou do teto de upload do servidor. Use `audio: true` ou aumente o nível de impulso |
+| Comandos personalizados não respondem | O prefixo mudou (veja `/config ver`) ou falta a **Message Content Intent** |
 | Erro ao instalar `better-sqlite3` | Node abaixo da versão 20, ou faltam ferramentas de compilação para o *build* nativo |
 
 ---

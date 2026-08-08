@@ -7,12 +7,14 @@ const CATEGORIES = {
   automod: { label: '🤖 AutoMod', order: 2 },
   configuracao: { label: '⚙️ Configuração', order: 3 },
   utilidades: { label: '🔧 Utilidades', order: 4 },
-  niveis: { label: '📈 Níveis', order: 5 },
-  economia: { label: '🪙 Economia', order: 6 },
-  diversao: { label: '🎲 Diversão', order: 7 },
-  sorteios: { label: '🎉 Sorteios', order: 8 },
-  tickets: { label: '🎫 Tickets', order: 9 },
-  ia: { label: '🧠 Inteligência Artificial', order: 10 },
+  social: { label: '💞 Social', order: 5 },
+  niveis: { label: '📈 Níveis', order: 6 },
+  economia: { label: '🪙 Economia', order: 7 },
+  jogos: { label: '🎮 Jogos', order: 8 },
+  diversao: { label: '🎲 Diversão', order: 9 },
+  sorteios: { label: '🎉 Sorteios', order: 10 },
+  tickets: { label: '🎫 Tickets', order: 11 },
+  ia: { label: '🧠 Inteligência Artificial', order: 12 },
 };
 
 export default {

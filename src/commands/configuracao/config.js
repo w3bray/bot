@@ -175,6 +175,29 @@ export default {
             .setMaxLength(20),
         ),
     )
+    .addSubcommand((sub) =>
+      sub
+        .setName('sugestoes')
+        .setDescription('Canal que recebe as sugestões enviadas com /sugestao.')
+        .addChannelOption((option) =>
+          option
+            .setName('canal')
+            .setDescription('Canal das sugestões (vazio para desativar)')
+            .addChannelTypes(...TEXT_CHANNELS),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('prefixo')
+        .setDescription('Prefixo usado pelos comandos personalizados (padrão: !).')
+        .addStringOption((option) =>
+          option
+            .setName('simbolo')
+            .setDescription('1 a 3 caracteres, sem espaços. Ex.: ! ? .')
+            .setRequired(true)
+            .setMaxLength(3),
+        ),
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setContexts(InteractionContextType.Guild),
 
@@ -190,6 +213,8 @@ export default {
       starboard: setStarboard,
       tickets: setTickets,
       moeda: setCurrency,
+      sugestoes: setSuggestions,
+      prefixo: setPrefix,
     };
 
     return handlers[interaction.options.getSubcommand()](interaction);
@@ -256,6 +281,13 @@ async function showConfig(interaction) {
             name: '🪙 Economia',
             value: `Moeda: **${settings.currency_name}**`,
             inline: true,
+          },
+          {
+            name: '💡 Sugestões e comandos',
+            value: [
+              `Canal de sugestões: ${channelMention(settings.suggestion_channel)}`,
+              `Prefixo dos comandos personalizados: \`${settings.prefix}\``,
+            ].join('\n'),
           },
         )
         .setFooter({ text: 'Use /automod ver para as regras de moderação automática.' }),
@@ -464,6 +496,41 @@ async function setTickets(interaction) {
   await interaction.reply({
     embeds: [
       embed.success('Configuração de tickets atualizada. Publique o painel com `/ticket painel`.'),
+    ],
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
+async function setSuggestions(interaction) {
+  const channel = interaction.options.getChannel('canal');
+  setGuildConfig(interaction.guildId, { suggestion_channel: channel?.id ?? null });
+
+  await interaction.reply({
+    embeds: [
+      embed.success(
+        channel
+          ? `As sugestões enviadas com \`/sugestao enviar\` irão para ${channel}.`
+          : 'Canal de sugestões desativado.',
+      ),
+    ],
+    flags: MessageFlags.Ephemeral,
+  });
+}
+
+async function setPrefix(interaction) {
+  const prefix = interaction.options.getString('simbolo').trim();
+
+  if (!prefix || /\s/.test(prefix)) {
+    return replyError(interaction, 'O prefixo não pode conter espaços.');
+  }
+
+  setGuildConfig(interaction.guildId, { prefix });
+
+  await interaction.reply({
+    embeds: [
+      embed.success(
+        `Prefixo definido como \`${prefix}\`. Os comandos personalizados agora respondem a \`${prefix}nome\`.`,
+      ),
     ],
     flags: MessageFlags.Ephemeral,
   });

@@ -183,7 +183,69 @@ CREATE TABLE IF NOT EXISTS afk (
   since    INTEGER NOT NULL,
   PRIMARY KEY (guild_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS profiles (
+  guild_id    TEXT NOT NULL,
+  user_id     TEXT NOT NULL,
+  bio         TEXT,
+  reputation  INTEGER NOT NULL DEFAULT 0,
+  last_rep    INTEGER NOT NULL DEFAULT 0,
+  married_to  TEXT,
+  married_at  INTEGER,
+  badges      TEXT NOT NULL DEFAULT '[]',
+  color       TEXT,
+  PRIMARY KEY (guild_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS inventory (
+  guild_id TEXT NOT NULL,
+  user_id  TEXT NOT NULL,
+  item_id  TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  bought_at INTEGER NOT NULL,
+  PRIMARY KEY (guild_id, user_id, item_id)
+);
+
+CREATE TABLE IF NOT EXISTS custom_commands (
+  guild_id   TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  response   TEXT NOT NULL,
+  created_by TEXT NOT NULL,
+  uses       INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (guild_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS suggestions (
+  message_id TEXT PRIMARY KEY,
+  guild_id   TEXT NOT NULL,
+  channel_id TEXT NOT NULL,
+  author_id  TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'pendente',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS suggestion_votes (
+  message_id TEXT NOT NULL,
+  user_id    TEXT NOT NULL,
+  vote       INTEGER NOT NULL,
+  PRIMARY KEY (message_id, user_id)
+);
 `);
+
+// Migrações leves: colunas adicionadas depois da primeira versão do bot.
+// `ALTER TABLE ... ADD COLUMN` falha se a coluna já existe, então ignoramos o erro.
+for (const [table, column, definition] of [
+  ['guilds', 'suggestion_channel', 'TEXT'],
+  ['guilds', 'prefix', "TEXT NOT NULL DEFAULT '!'"],
+]) {
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch {
+    // coluna já existe
+  }
+}
 
 logger.info(`Banco de dados pronto em ${file}`);
 

@@ -1,5 +1,5 @@
 import { Events } from 'discord.js';
-import { db } from '../lib/db.js';
+import { db, getGuildConfig } from '../lib/db.js';
 import { embed } from '../lib/embeds.js';
 import { formatDuration } from '../lib/time.js';
 import { inspect } from '../services/automod.js';
@@ -8,6 +8,9 @@ import { logger } from '../lib/logger.js';
 
 const selectAfk = db.prepare('SELECT * FROM afk WHERE guild_id = ? AND user_id = ?');
 const deleteAfk = db.prepare('DELETE FROM afk WHERE guild_id = ? AND user_id = ?');
+const selectCustom = db.prepare(
+  'SELECT * FROM custom_commands WHERE guild_id = ? AND name = ?',
+);
 
 export default {
   name: Events.MessageCreate,
@@ -21,6 +24,7 @@ export default {
 
       await clearOwnAfk(message);
       await notifyMentionedAfk(message);
+      await runCustomCommand(message);
       await handleMessage(message);
     } catch (error) {
       logger.error('Erro ao processar mensagem:', error);
@@ -52,6 +56,30 @@ async function clearOwnAfk(message) {
     .catch(() => null);
 
   if (notice) setTimeout(() => notice.delete().catch(() => null), 10_000);
+}
+
+async function runCustomCommand(message) {
+  const settings = getGuildConfig(message.guild.id);
+  const prefix = settings.prefix || '!';
+
+  if (!message.content.startsWith(prefix)) return;
+
+  const name = message.content.slice(prefix.length).split(/\s+/)[0]?.toLowerCase();
+  if (!name) return;
+
+  const custom = selectCustom.get(message.guild.id, name);
+  if (!custom) return;
+
+  db.prepare(
+    'UPDATE custom_commands SET uses = uses + 1 WHERE guild_id = ? AND name = ?',
+  ).run(message.guild.id, name);
+
+  const response = custom.response
+    .replaceAll('{user}', `<@${message.author.id}>`)
+    .replaceAll('{username}', message.author.username)
+    .replaceAll('{server}', message.guild.name);
+
+  await message.reply({ embeds: [embed.plain(response)] }).catch(() => null);
 }
 
 async function notifyMentionedAfk(message) {
