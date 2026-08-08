@@ -50,17 +50,6 @@ São dois comandos de propósito: o primeiro baixa, o segundo executa. Assim voc
 pode ler o arquivo antes de rodar — nunca execute um script da internet direto no
 seu servidor sem essa chance.
 
-> **Enquanto o pull request não estiver mesclado**, o código ainda não está na
-> `main`. Use esta variação, que aponta para o branch:
->
-> ```bash
-> BRANCH=claude/discord-bot-utility-mnjsa9
-> curl -fsSLO "https://raw.githubusercontent.com/w3bray/bot/$BRANCH/scripts/install.sh"
-> sudo BOT_BRANCH="$BRANCH" bash install.sh
-> ```
->
-> Depois de mesclar, os dois comandos de cima passam a funcionar.
-
 Ele pergunta três coisas:
 
 | Pergunta | Onde achar |
@@ -104,44 +93,59 @@ de RAM sem cobrar nada — bem mais do que este bot precisa. Em troca, o cadastr
 o mais chato de todos os provedores. Vale a pena, mas leia as três armadilhas no
 fim desta seção antes de começar.
 
+Os nomes abaixo estão como aparecem no **painel em português**, com o termo em
+inglês entre parênteses — a Oracle muda a interface com frequência e algumas
+telas ficam em inglês mesmo com o idioma em português.
+
 ### 1. Criar a conta
 
-[oracle.com/cloud/free](https://www.oracle.com/cloud/free/) → *Start for free*.
+[oracle.com/br/cloud/free](https://www.oracle.com/br/cloud/free/) →
+**Experimente gratuitamente** *(Start for free)*.
 
 Pede **cartão de crédito** para verificar identidade. Recursos *Always Free* não
 são cobrados; a Oracle faz uma cobrança simbólica de verificação e estorna. Ainda
 assim, não deixe a conta virar *Pay As You Go* sem querer.
 
-Escolha a região mais perto de você (São Paulo ou Vinhedo, se estiverem
-disponíveis) — **a região não pode ser trocada depois**.
+Escolha a região mais perto de você — **Brasil Leste (São Paulo)** ou
+**Brasil Sudeste (Vinhedo)**. **A região não pode ser trocada depois.**
 
 ### 2. Gerar a chave SSH no celular
 
 A Oracle **não usa senha**: só chave SSH. Faça isso antes de criar a máquina.
 
-No **Termius**: menu → *Keychain* → **+** → *Generate key* → tipo **ED25519** →
-salve. Depois abra a chave criada e copie a **chave pública** (`Public key`).
-
-Você vai colar esse texto no próximo passo. Ele começa com `ssh-ed25519`.
+No **Termius** (o app costuma ficar em inglês): menu → *Keychain* → **+** →
+*Generate key* → tipo **ED25519** → salve. Depois abra a chave criada e copie a
+**chave pública** (*Public key*), que começa com `ssh-ed25519`.
 
 ### 3. Criar a máquina
 
-No painel: menu ☰ → **Compute** → **Instances** → **Create instance**.
+No painel: menu ☰ → **Computação** *(Compute)* → **Instâncias** *(Instances)* →
+botão **Criar instância** *(Create instance)*.
 
-| Campo | O que escolher |
+Preencha assim:
+
+| Campo no painel | O que fazer |
 |---|---|
-| **Name** | qualquer nome, ex.: `bot-discord` |
-| **Image** | *Change image* → **Canonical Ubuntu** → **24.04** |
-| **Shape** | *Change shape* → aba **Ampere** → `VM.Standard.A1.Flex` → **2 OCPU e 12 GB** |
-| **Primary VNIC** | deixe como está e confirme que **Assign a public IPv4 address** está marcado |
-| **Add SSH keys** | *Paste public keys* → cole a chave pública do passo 2 |
+| **Nome** *(Name)* | qualquer nome, ex.: `bot-discord` |
+| **Criar no compartimento** *(Create in compartment)* | deixe o que já vem |
+| **Imagem e formato** *(Image and shape)* | clique em **Editar** *(Edit)* |
+| ↳ **Alterar imagem** *(Change image)* | **Canonical Ubuntu** → versão **24.04** → **Selecionar imagem** |
+| ↳ **Alterar formato** *(Change shape)* | aba **Ampere** → `VM.Standard.A1.Flex` → **OCPUs: 2** e **Memória: 12 GB** → **Selecionar formato** |
+| **Rede primária** *(Primary network)* | deixe criar uma rede nova |
+| **Atribuir endereço IPv4 público** *(Assign a public IPv4 address)* | precisa estar em **Sim** |
+| **Adicionar chaves SSH** *(Add SSH keys)* | marque **Colar chaves públicas** *(Paste public keys)* e cole a chave do passo 2 |
 
-Clique em **Create** e espere o quadrado ficar verde (**RUNNING**). Anote o
-**Public IP address**.
+Clique em **Criar** *(Create)*. O quadrado fica laranja em **Provisionando**
+*(Provisioning)* e depois verde em **Em execução** *(Running)* — aí anote o
+**Endereço IP público** *(Public IP address)* que aparece na página.
 
-> **Não precisa abrir nenhuma porta.** O bot só faz conexões de saída — ele
-> conversa com o Discord, ninguém conversa com ele. Se você viu tutoriais
-> mandando mexer em *Security List*, isso é para sites, não para bots.
+Procure o selo **Elegível para Always Free** *(Always Free Eligible)* na hora de
+escolher o formato. Se ele não aparecer, você está prestes a criar uma máquina
+paga.
+
+> **Não precisa liberar porta nenhuma.** O bot só faz conexões de saída — ele
+> fala com o Discord, ninguém fala com ele. Se você achar tutorial mandando mexer
+> em **Lista de Segurança** *(Security List)*, aquilo é para hospedar site.
 
 ### 4. Conectar e instalar
 
@@ -155,21 +159,21 @@ curl -fsSLO https://raw.githubusercontent.com/w3bray/bot/main/scripts/install.sh
 sudo bash install.sh
 ```
 
-O usuário na Oracle é `ubuntu`, não `root` — por isso o `sudo` é obrigatório aqui.
+O usuário na Oracle é `ubuntu`, não `root` — por isso o `sudo` é obrigatório.
 
 ### As três armadilhas da Oracle
 
-**1. "Out of host capacity"** — é o erro mais comum ao criar a máquina ARM: a
-região está lotada. Não é problema seu. O que fazer:
+**1. "Não há capacidade de host suficiente"** *(Out of host capacity)* — o erro
+mais comum ao criar a máquina ARM: a região está lotada. Não é problema seu:
 
 - tente de novo mais tarde (madrugada costuma funcionar);
-- no formulário, troque o *Availability Domain* (AD-1, AD-2, AD-3);
-- ou use o shape AMD `VM.Standard.E2.1.Micro`, que quase sempre tem vaga — mas
+- troque o **Domínio de disponibilidade** *(Availability Domain)* — AD-1, AD-2, AD-3;
+- ou use o formato AMD `VM.Standard.E2.1.Micro`, que quase sempre tem vaga — mas
   veja a armadilha 2.
 
-**2. A máquina AMD gratuita tem só 1 GB de RAM.** Compilar a imagem nela pode
+**2. A máquina AMD gratuita tem só 1 GB de RAM.** Construir a imagem nela pode
 travar por falta de memória. Se for a sua única opção, crie memória virtual
-antes de rodar o instalador:
+**antes** de rodar o instalador:
 
 ```bash
 sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
@@ -181,10 +185,10 @@ Na máquina ARM com 12 GB isso não é necessário.
 
 **3. A Oracle pode recuperar máquinas ociosas.** As regras do *Always Free*
 preveem retomar instâncias que ficam muito tempo com uso baixo de CPU, rede e
-memória. Um bot de Discord é justamente de uso baixo. Confira os termos atuais na
-sua conta; quem depende de 24/7 costuma migrar a conta para *Pay As You Go*, que
-mantém os mesmos recursos gratuitos mas não sofre essa recuperação. Fique de olho
-na fatura se fizer isso.
+memória — e um bot de Discord é justamente de uso baixo. Confira os termos
+atuais na sua conta; quem depende de 24/7 costuma migrar para *Pay As You Go*,
+que mantém os mesmos recursos gratuitos mas não sofre essa recuperação. Se fizer
+isso, fique de olho na fatura.
 
 ### Sobre o ARM
 
