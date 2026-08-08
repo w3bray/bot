@@ -97,6 +97,110 @@ sudo docker compose up -d --build
 `AUTO_DEPLOY=true` faz o bot registrar os comandos sozinho ao ligar, dispensando
 o `npm run deploy`.
 
+## Oracle Cloud — passo a passo
+
+O *Always Free* da Oracle dá uma máquina ARM (Ampere A1) de até 4 núcleos e 24 GB
+de RAM sem cobrar nada — bem mais do que este bot precisa. Em troca, o cadastro é
+o mais chato de todos os provedores. Vale a pena, mas leia as três armadilhas no
+fim desta seção antes de começar.
+
+### 1. Criar a conta
+
+[oracle.com/cloud/free](https://www.oracle.com/cloud/free/) → *Start for free*.
+
+Pede **cartão de crédito** para verificar identidade. Recursos *Always Free* não
+são cobrados; a Oracle faz uma cobrança simbólica de verificação e estorna. Ainda
+assim, não deixe a conta virar *Pay As You Go* sem querer.
+
+Escolha a região mais perto de você (São Paulo ou Vinhedo, se estiverem
+disponíveis) — **a região não pode ser trocada depois**.
+
+### 2. Gerar a chave SSH no celular
+
+A Oracle **não usa senha**: só chave SSH. Faça isso antes de criar a máquina.
+
+No **Termius**: menu → *Keychain* → **+** → *Generate key* → tipo **ED25519** →
+salve. Depois abra a chave criada e copie a **chave pública** (`Public key`).
+
+Você vai colar esse texto no próximo passo. Ele começa com `ssh-ed25519`.
+
+### 3. Criar a máquina
+
+No painel: menu ☰ → **Compute** → **Instances** → **Create instance**.
+
+| Campo | O que escolher |
+|---|---|
+| **Name** | qualquer nome, ex.: `bot-discord` |
+| **Image** | *Change image* → **Canonical Ubuntu** → **24.04** |
+| **Shape** | *Change shape* → aba **Ampere** → `VM.Standard.A1.Flex` → **2 OCPU e 12 GB** |
+| **Primary VNIC** | deixe como está e confirme que **Assign a public IPv4 address** está marcado |
+| **Add SSH keys** | *Paste public keys* → cole a chave pública do passo 2 |
+
+Clique em **Create** e espere o quadrado ficar verde (**RUNNING**). Anote o
+**Public IP address**.
+
+> **Não precisa abrir nenhuma porta.** O bot só faz conexões de saída — ele
+> conversa com o Discord, ninguém conversa com ele. Se você viu tutoriais
+> mandando mexer em *Security List*, isso é para sites, não para bots.
+
+### 4. Conectar e instalar
+
+No Termius: **+** → *New host* → cole o IP → **Username: `ubuntu`** → escolha a
+chave que você gerou. Conecte.
+
+Depois é o mesmo instalador das outras opções:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/w3bray/bot/main/scripts/install.sh
+sudo bash install.sh
+```
+
+O usuário na Oracle é `ubuntu`, não `root` — por isso o `sudo` é obrigatório aqui.
+
+### As três armadilhas da Oracle
+
+**1. "Out of host capacity"** — é o erro mais comum ao criar a máquina ARM: a
+região está lotada. Não é problema seu. O que fazer:
+
+- tente de novo mais tarde (madrugada costuma funcionar);
+- no formulário, troque o *Availability Domain* (AD-1, AD-2, AD-3);
+- ou use o shape AMD `VM.Standard.E2.1.Micro`, que quase sempre tem vaga — mas
+  veja a armadilha 2.
+
+**2. A máquina AMD gratuita tem só 1 GB de RAM.** Compilar a imagem nela pode
+travar por falta de memória. Se for a sua única opção, crie memória virtual
+antes de rodar o instalador:
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+Na máquina ARM com 12 GB isso não é necessário.
+
+**3. A Oracle pode recuperar máquinas ociosas.** As regras do *Always Free*
+preveem retomar instâncias que ficam muito tempo com uso baixo de CPU, rede e
+memória. Um bot de Discord é justamente de uso baixo. Confira os termos atuais na
+sua conta; quem depende de 24/7 costuma migrar a conta para *Pay As You Go*, que
+mantém os mesmos recursos gratuitos mas não sofre essa recuperação. Fique de olho
+na fatura se fizer isso.
+
+### Sobre o ARM
+
+A máquina Ampere é ARM64, arquitetura diferente do PC comum — mas o `Dockerfile`
+deste repositório funciona nela sem nenhuma mudança:
+
+- o `better-sqlite3` usa binário pronto quando existe e **compila sozinho** quando
+  não existe; os compiladores estão na primeira etapa da imagem;
+- o `yt-dlp` que a imagem baixa é Python puro, sem arquitetura;
+- `ffmpeg` e a imagem base do Node têm versão ARM64 oficial.
+
+A primeira construção na ARM pode demorar alguns minutos a mais se ele precisar
+compilar. É normal, e acontece uma vez só.
+
+---
+
 ## Opção B — hospedagem pronta para bots
 
 Serviços como Railway, Fly.io, Sparked Host ou Bot-Hosting.net conectam direto ao
