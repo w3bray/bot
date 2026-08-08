@@ -15,9 +15,16 @@ Guia para quem está no celular e nunca hospedou nada.
 
 Serve para **testar**. Não serve para deixar no ar.
 
-Para 24/7 de verdade o bot precisa morar num computador que nunca desliga — um
-**VPS**, que é um computador alugado na internet. Custa poucos dólares por mês e
-você controla tudo **pelo próprio celular**.
+Para 24/7 de verdade o bot precisa morar num computador que nunca desliga. Há
+dois caminhos, os dois controlados **pelo próprio celular**:
+
+| | Custo | Facilidade | Tudo funciona? |
+|---|---|---|---|
+| **[Opção A](#opção-a--vps-com-o-instalador-automático-recomendada)** — VPS | uns R$ 25/mês | 2 comandos | ✅ sim, incluindo `/baixar` |
+| **[Opção B](#opção-b--hospedagem-gratuita-para-bots-sem-cartão-sem-terminal)** — painel grátis | R$ 0 | sem terminal, só cliques | ⚠️ sem `/baixar`, e precisa renovar |
+
+**Sem dinheiro? Vá direto para a Opção B.** Ela funciona, é a mais fácil de todas
+e não pede cartão — você só abre mão do comando de baixar vídeo.
 
 ---
 
@@ -249,23 +256,90 @@ compilar. É normal, e acontece uma vez só.
 
 ---
 
-## Opção B — hospedagem pronta para bots
+## Opção B — hospedagem gratuita para bots (sem cartão, sem terminal)
 
-Serviços como Railway, Fly.io, Sparked Host ou Bot-Hosting.net conectam direto ao
-GitHub e sobem o bot sem terminal. É mais fácil, mas tem duas armadilhas:
+Serviços como **bot-hosting.net**, **Sparked Host (plano free)** e outros painéis
+parecidos são feitos especificamente para bots de Discord. Não pedem cartão, não
+exigem SSH e o cadastro leva minutos — é o caminho mais fácil de todos se você
+não pode pagar.
 
-**1. Disco efêmero — a mais perigosa.** Muitos planos apagam os arquivos a cada
-restart. Como este bot guarda tudo num arquivo SQLite, isso significa **perder
-níveis, economia e configurações toda vez que reiniciar**. Antes de escolher,
-confirme que o plano oferece **disco persistente** (às vezes chamado de *volume*
-ou *persistent storage*) e aponte a variável `DATABASE_PATH` para dentro dele.
+Em troca, você aceita três limitações. Leia antes de começar para não se
+frustrar depois.
 
-**2. `yt-dlp` e `ffmpeg`.** Só funcionam se o serviço aceitar o `Dockerfile` deste
-repositório. Se ele usar detecção automática de linguagem, o `/baixar` fica
-desativado — o resto do bot funciona normalmente.
+### O que você perde
 
-Planos gratuitos costumam ter as duas limitações, além de hibernar por
-inatividade. Para um bot que precisa ficar conectado, um VPS barato sai melhor.
+| Limitação | Consequência |
+|---|---|
+| **Sem Docker** | O `/baixar` fica desativado — o painel não instala `yt-dlp` nem `ffmpeg`. Os outros 52 comandos funcionam normalmente. |
+| **Precisa renovar** | Muitos painéis apagam servidores inativos ou exigem que você entre no site a cada poucos dias para renovar. Se esquecer, o bot some. |
+| **Pouca memória** | Normalmente 512 MB. Este bot usa cerca de 110 MB carregado e ~200 MB em operação, então cabe — mas não sobra muito. |
+
+O bot foi feito para degradar sem quebrar: sem `yt-dlp`, o `/baixar` apenas avisa
+que está indisponível, e nada mais é afetado.
+
+### Passo a passo
+
+**1.** Crie a conta no painel escolhido e crie um servidor do tipo **Node.js**
+(versão **20 ou superior**).
+
+**2.** Aponte para este repositório. A maioria dos painéis tem um campo de
+**Git Repository** nas configurações de inicialização:
+
+```
+https://github.com/w3bray/bot.git
+```
+
+Se o painel não tiver esse campo, use o gerenciador de arquivos e envie os
+arquivos do projeto — menos a pasta `node_modules`.
+
+**3.** Comando de inicialização *(Startup Command)*:
+
+```
+npm start
+```
+
+**4.** Variáveis de ambiente. Procure a aba **Startup**, **Variables** ou
+**Variáveis** e crie estas cinco:
+
+| Variável | Valor |
+|---|---|
+| `DISCORD_TOKEN` | seu token |
+| `CLIENT_ID` | seu Application ID |
+| `GUILD_ID` | o ID do seu servidor |
+| `AUTO_DEPLOY` | `true` |
+| `SHARDING` | `off` |
+
+As duas últimas são **obrigatórias aqui**:
+
+- `AUTO_DEPLOY=true` registra os comandos sozinho, já que você não tem terminal
+  para rodar `npm run deploy`;
+- `SHARDING=off` mantém tudo num processo só. Com o padrão `auto`, o bot criaria
+  um processo supervisor e outro para o shard — desperdício num plano de 512 MB.
+
+**5.** Se o painel tiver um console, rode `npm install` uma vez. Muitos fazem isso
+sozinhos na primeira inicialização.
+
+**6.** Clique em **Start**. Quando aparecer `Conectado como SeuBot#0000` no
+console, está no ar.
+
+### Os seus dados
+
+O bot guarda tudo num arquivo SQLite em `data/bot.db`, dentro da pasta do
+servidor. Nesses painéis os arquivos costumam persistir entre reinícios — mas
+**confirme antes de criar apego**: reinicie o servidor uma vez pelo painel e veja
+se o `/rank` de alguém continua igual.
+
+Se zerar, o disco é efêmero e esse painel não serve para guardar níveis e
+economia.
+
+Para fazer backup, baixe `data/bot.db` pelo gerenciador de arquivos do painel de
+vez em quando.
+
+### Quando migrar
+
+Se um dia sobrar uns R$ 25 por mês, uma VPS resolve as três limitações de uma vez
+— o `/baixar` volta, nada expira e os dados ficam num volume. O mesmo instalador
+da Opção A funciona, e dá para levar seu `data/bot.db` junto.
 
 ---
 
@@ -305,6 +379,8 @@ assim ele cai ao reiniciar o aparelho.
 | Ban, kick ou autorole falham | O cargo do bot está abaixo do cargo do alvo. Arraste o cargo do bot para o topo |
 | Oracle: *"Você deve selecionar uma sub-rede pública para designar um endereço IPv4 público"* | Na etapa **Rede**, marque **Criar uma nova rede virtual na nuvem** e **Criar uma nova sub-rede pública**. Em sub-rede privada não existe IP público |
 | Oracle: criei a instância e não consigo entrar | Você marcou *Nenhuma chave SSH*, ou gerou o par e não baixou a chave privada. Ela não fica disponível depois — apague a instância e crie de novo |
+| Painel grátis: bot fica sem memória ou reinicia sozinho | Confirme que `SHARDING` está em `off`. Com `auto` o bot cria um processo a mais, e num plano de 512 MB isso pesa |
+| Painel grátis: o servidor sumiu | Esses painéis apagam servidores inativos. Entre no site do painel e renove antes do prazo |
 
 ---
 
