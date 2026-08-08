@@ -52,9 +52,16 @@ carregamento automático de comandos, eventos e botões.
 
 ---
 
-> **Quer deixar o bot online 24/7?** Veja o **[guia de hospedagem](DEPLOY.md)** —
-> passo a passo para quem está no celular, com Docker (traz `yt-dlp` e `ffmpeg`
-> embutidos, sem instalar nada na mão).
+> **Quer o bot online 24/7?** Num servidor Ubuntu novo, dois comandos resolvem:
+>
+> ```bash
+> curl -fsSLO https://raw.githubusercontent.com/w3bray/bot/main/scripts/install.sh
+> sudo bash install.sh
+> ```
+>
+> O instalador cuida do Docker, do código e da configuração — e a imagem já traz
+> `yt-dlp` e `ffmpeg` embutidos. Detalhes e alternativas no
+> **[guia de hospedagem](DEPLOY.md)**.
 
 ## Instalação
 

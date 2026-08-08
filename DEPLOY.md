@@ -21,10 +21,10 @@ você controla tudo **pelo próprio celular**.
 
 ---
 
-## Opção A — VPS com Docker (recomendada)
+## Opção A — VPS com o instalador automático (recomendada)
 
-O jeito mais simples: o Docker já traz o `yt-dlp` e o `ffmpeg` embutidos, então
-você não instala nada disso na mão.
+**Dois comandos.** O instalador cuida do Docker, do código e da configuração; a
+imagem já traz `yt-dlp` e `ffmpeg` embutidos.
 
 ### 1. Alugue um VPS
 
@@ -39,23 +39,51 @@ Ao final você recebe: um **IP**, um **usuário** (normalmente `root`) e uma **s
 Instale um app de SSH — **Termius** (mais fácil) ou **Termux** (mais cru), os dois
 gratuitos na Play Store. Conecte usando o IP, o usuário e a senha.
 
-### 3. Instale o Docker e baixe o bot
+### 3. Rode o instalador
 
-Cole estes comandos, um de cada vez:
+```bash
+curl -fsSLO https://raw.githubusercontent.com/w3bray/bot/main/scripts/install.sh
+sudo bash install.sh
+```
+
+São dois comandos de propósito: o primeiro baixa, o segundo executa. Assim você
+pode ler o arquivo antes de rodar — nunca execute um script da internet direto no
+seu servidor sem essa chance.
+
+> **Enquanto o pull request não estiver mesclado**, o código ainda não está na
+> `main`. Use esta variação, que aponta para o branch:
+>
+> ```bash
+> BRANCH=claude/discord-bot-utility-mnjsa9
+> curl -fsSLO "https://raw.githubusercontent.com/w3bray/bot/$BRANCH/scripts/install.sh"
+> sudo BOT_BRANCH="$BRANCH" bash install.sh
+> ```
+>
+> Depois de mesclar, os dois comandos de cima passam a funcionar.
+
+Ele pergunta três coisas:
+
+| Pergunta | Onde achar |
+|---|---|
+| **Token do bot** | Developer Portal → aba **Bot** → *Reset Token* |
+| **Application ID** | Developer Portal → **General Information** |
+| **ID do servidor** | Discord → Configurações → Avançado → Modo desenvolvedor, depois botão direito no servidor → *Copiar ID*. Pode pular com Enter |
+
+O token **não aparece na tela** enquanto você cola — proposital, para não ficar
+visível nem no histórico do terminal. O `.env` nasce legível só pelo dono (`600`).
+
+Quando terminar, o bot está no ar. Pode fechar o app e desligar o celular: ele
+religa sozinho se cair ou se o VPS reiniciar.
+
+Para atualizar depois, rode o mesmo instalador — ele detecta a instalação
+existente, atualiza o código e mantém seu `.env` e seus dados.
+
+### Se preferir fazer na mão
 
 ```bash
 sudo apt update && sudo apt install -y docker.io docker-compose-v2 git
 sudo systemctl enable --now docker
-git clone https://github.com/w3bray/bot.git
-cd bot
-```
-
-### 4. Crie o arquivo de configuração
-
-Digitar em editor de texto no celular é ruim. Cole **este bloco inteiro de uma vez**,
-trocando os três valores pelos seus:
-
-```bash
+git clone https://github.com/w3bray/bot.git && cd bot
 cat > .env << 'FIM'
 DISCORD_TOKEN=cole_seu_token_aqui
 CLIENT_ID=cole_seu_application_id_aqui
@@ -63,46 +91,11 @@ GUILD_ID=cole_o_id_do_seu_servidor
 AUTO_DEPLOY=true
 SHARDING=off
 FIM
-```
-
-`AUTO_DEPLOY=true` faz o bot registrar os comandos sozinho ao ligar — assim você
-nunca precisa rodar o `npm run deploy`.
-
-### 5. Ligue
-
-```bash
 sudo docker compose up -d --build
 ```
 
-A primeira vez demora alguns minutos (está montando a imagem). Depois:
-
-```bash
-sudo docker compose logs -f
-```
-
-Quando aparecer `Conectado como SeuBot#0000`, está no ar. Saia dos logs com
-`Ctrl+C` — o bot **continua rodando**. Pode fechar o app e desligar o celular.
-
-Pronto: 24/7 de verdade. O `restart: unless-stopped` religa o bot se ele cair ou
-se o VPS reiniciar.
-
-### Comandos do dia a dia
-
-```bash
-cd bot
-sudo docker compose logs -f       # ver o que está acontecendo
-sudo docker compose restart       # reiniciar
-sudo docker compose down          # desligar
-sudo docker compose up -d         # ligar de novo
-
-# atualizar para a versão mais nova do código:
-git pull && sudo docker compose up -d --build
-```
-
-Seus dados (níveis, economia, configurações) ficam num volume do Docker e
-**sobrevivem** a restarts, updates e reinício da máquina.
-
----
+`AUTO_DEPLOY=true` faz o bot registrar os comandos sozinho ao ligar, dispensando
+o `npm run deploy`.
 
 ## Opção B — hospedagem pronta para bots
 
