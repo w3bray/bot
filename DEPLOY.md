@@ -122,26 +122,70 @@ No **Termius** (o app costuma ficar em inglês): menu → *Keychain* → **+** �
 No painel: menu ☰ → **Computação** *(Compute)* → **Instâncias** *(Instances)* →
 botão **Criar instância** *(Create instance)*.
 
-Preencha assim:
+A Oracle usa um **assistente com etapas numeradas**: *Informações básicas* →
+*Segurança* → *Rede* → *Armazenamento* → *Revisão*. Use **Próximo** para avançar
+e **Anterior** para voltar e conferir — nada é criado até você clicar em **Criar**
+na última etapa.
 
-| Campo no painel | O que fazer |
+#### Etapa 1 — Informações básicas
+
+| Campo | O que fazer |
 |---|---|
-| **Nome** *(Name)* | qualquer nome, ex.: `bot-discord` |
-| **Criar no compartimento** *(Create in compartment)* | deixe o que já vem |
-| **Imagem e formato** *(Image and shape)* | clique em **Editar** *(Edit)* |
-| ↳ **Alterar imagem** *(Change image)* | **Canonical Ubuntu** → versão **24.04** → **Selecionar imagem** |
-| ↳ **Alterar formato** *(Change shape)* | aba **Ampere** → `VM.Standard.A1.Flex` → **OCPUs: 2** e **Memória: 12 GB** → **Selecionar formato** |
-| **Rede primária** *(Primary network)* | deixe criar uma rede nova |
-| **Atribuir endereço IPv4 público** *(Assign a public IPv4 address)* | precisa estar em **Sim** |
-| **Adicionar chaves SSH** *(Add SSH keys)* | marque **Colar chaves públicas** *(Paste public keys)* e cole a chave do passo 2 |
+| **Nome** | qualquer um, ex.: `bot-discord` |
+| **Criar no compartimento** | deixe o que já vem (o compartimento raiz) |
+| **Imagem** | **Canonical Ubuntu** → versão **24.04** |
+| **Formato** *(Shape)* | aba **Ampere** → `VM.Standard.A1.Flex` → **2 OCPUs** e **12 GB** de memória |
 
-Clique em **Criar** *(Create)*. O quadrado fica laranja em **Provisionando**
-*(Provisioning)* e depois verde em **Em execução** *(Running)* — aí anote o
-**Endereço IP público** *(Public IP address)* que aparece na página.
+Confira o selo **Elegível para Always Free** *(Always Free Eligible)* ao escolher
+o formato. **Sem esse selo você está criando uma máquina paga.**
 
-Procure o selo **Elegível para Always Free** *(Always Free Eligible)* na hora de
-escolher o formato. Se ele não aparecer, você está prestes a criar uma máquina
-paga.
+#### Etapa 2 — Segurança
+
+Não precisa mexer em nada. Siga em **Próximo**.
+
+#### Etapa 3 — Rede
+
+É onde a maioria trava. O aviso *"Você deve selecionar uma sub-rede pública para
+designar um endereço IPv4 público"* aparece porque nenhuma sub-rede foi escolhida
+ainda.
+
+| Campo | O que marcar |
+|---|---|
+| **Rede principal** | **Criar uma nova rede virtual na nuvem** |
+| **Sub-rede** | **Criar uma nova sub-rede pública** |
+| **Designação de endereço IPv4** | **Designar endereço IPv4 público automaticamente** |
+| **Opções de início** | deixe em *Permitir que o Oracle Cloud Infrastructure escolha o melhor tipo de rede* |
+
+A palavra **pública** na sub-rede é o que destrava o resto: numa sub-rede privada
+o endereço IP público fica indisponível, e sem ele não dá para conectar pela
+internet.
+
+Ignore **Designação de endereço IPv6** e as **Opções avançadas** (registro de DNS).
+
+##### Ainda na etapa 3: Adicionar chaves SSH
+
+Aqui a Oracle oferece quatro opções. Nunca escolha *Nenhuma chave SSH* — você
+ficaria sem nenhuma forma de entrar na máquina.
+
+- **Já gerou a chave no Termius (passo 2)?** Marque **Colar chave pública** e cole
+  o texto que começa com `ssh-ed25519`.
+- **Não gerou?** Marque **Gerar um par de chaves para mim** e clique em
+  **Fazer download da chave privada**. Depois importe esse arquivo no Termius.
+
+> ⚠️ **Se escolher gerar, baixe a chave privada antes de sair da tela.** A Oracle
+> não disponibiliza esse arquivo depois. Sem ele, a única saída é apagar a
+> instância e criar outra.
+
+#### Etapas 4 e 5 — Armazenamento e Revisão
+
+Em **Armazenamento**, não mude nada: o disco padrão sobra para este bot.
+
+Em **Revisão**, confira imagem, formato e o selo Always Free, e clique em
+**Criar** *(Create)*.
+
+O status fica laranja em **Provisionando** *(Provisioning)* e depois verde em
+**Em execução** *(Running)* — aí aparece o **Endereço IP público**
+*(Public IP address)*, que é o que você usa para conectar.
 
 > **Não precisa liberar porta nenhuma.** O bot só faz conexões de saída — ele
 > fala com o Discord, ninguém fala com ele. Se você achar tutorial mandando mexer
@@ -259,6 +303,8 @@ assim ele cai ao reiniciar o aparelho.
 | `/baixar` diz que está desativado | Você não está usando o Dockerfile. No VPS com Docker ele já vem pronto |
 | Bot fica offline sozinho | Sinal de pouca memória. Veja `sudo docker compose logs --tail 50` |
 | Ban, kick ou autorole falham | O cargo do bot está abaixo do cargo do alvo. Arraste o cargo do bot para o topo |
+| Oracle: *"Você deve selecionar uma sub-rede pública para designar um endereço IPv4 público"* | Na etapa **Rede**, marque **Criar uma nova rede virtual na nuvem** e **Criar uma nova sub-rede pública**. Em sub-rede privada não existe IP público |
+| Oracle: criei a instância e não consigo entrar | Você marcou *Nenhuma chave SSH*, ou gerou o par e não baixou a chave privada. Ela não fica disponível depois — apague a instância e crie de novo |
 
 ---
 
