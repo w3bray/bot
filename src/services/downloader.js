@@ -1,0 +1,243 @@
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { logger } from '../lib/logger.js';
+
+/**
+ * Wrapper em volta do yt-dlp para baixar vídeos a partir de um link.
+ *
+ * Decisões de segurança importantes:
+ * - o yt-dlp é chamado com `spawn` e lista de argumentos, NUNCA por shell,
+ *   então a URL do usuário não pode virar comando;
+ * - a URL é validada antes (só http/https, sem host privado), evitando SSRF;
+ * - duração, tamanho e tempo de execução têm teto, e o processo é morto no timeout;
+ * - cada job usa um diretório temporário próprio, removido no `finally`.
+ */
+
+export const MAX_DURATION_SECONDS = 15 * 60;
+const METADATA_TIMEOUT = 25_000;
+const DOWNLOAD_TIMEOUT = 180_000;
+const MAX_CONCURRENT = 2;
+
+let running = 0;
+
+/** Verifica uma vez se o yt-dlp está instalado no PATH. */
+function detectBinary() {
+  const result = spawnSync('yt-dlp', ['--version'], { encoding: 'utf8' });
+  if (result.error || result.status !== 0) return null;
+  return result.stdout.trim();
+}
+
+export const ytdlpVersion = detectBinary();
+export const isEnabled = Boolean(ytdlpVersion);
+
+if (!isEnabled) {
+  logger.warn('yt-dlp não encontrado no PATH — o comando /baixar ficará desativado.');
+}
+
+const ffmpegAvailable = spawnSync('ffmpeg', ['-version']).status === 0;
+
+/**
+ * Valida a URL informada pelo usuário.
+ * Retorna a URL normalizada ou lança com uma mensagem amigável.
+ */
+export function validateUrl(input) {
+  let url;
+  try {
+    url = new URL(input.trim());
+  } catch {
+    throw new Error('Isso não parece um link válido.');
+  }
+
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('Só aceito links `http://` ou `https://`.');
+  }
+
+  const host = url.hostname.toLowerCase();
+
+  // Bloqueia alvos internos: sem isso, o bot viraria um proxy para a rede
+  // onde ele está hospedado (SSRF).
+  const isPrivate =
+    host === 'localhost' ||
+    host === '::1' ||
+    host.endsWith('.local') ||
+    host.endsWith('.internal') ||
+    /^(\d{1,3}\.){3}\d{1,3}$/.test(host) &&
+      (/^10\./.test(host) ||
+        /^127\./.test(host) ||
+        /^0\./.test(host) ||
+        /^192\.168\./.test(host) ||
+        /^169\.254\./.test(host) ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(host));
+
+  if (isPrivate) throw new Error('Esse endereço não é público.');
+
+  return url.toString();
+}
+
+/** Executa o yt-dlp e devolve stdout, com timeout que mata o processo. */
+function run(args, timeout) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('yt-dlp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    let stdout = '';
+    let stderr = '';
+    let finished = false;
+
+    const timer = setTimeout(() => {
+      finished = true;
+      child.kill('SIGKILL');
+      reject(new Error('A operação demorou demais e foi cancelada.'));
+    }, timeout);
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk;
+      // Trava de segurança: metadados gigantes não podem estourar a memória.
+      if (stdout.length > 8_000_000) {
+        child.kill('SIGKILL');
+      }
+    });
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk;
+    });
+
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      if (!finished) reject(new Error(`Não consegui executar o yt-dlp: ${error.message}`));
+    });
+
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (finished) return;
+      if (code === 0) resolve({ stdout, stderr });
+      else reject(new Error(friendlyError(stderr)));
+    });
+  });
+}
+
+/** Traduz os erros mais comuns do yt-dlp para algo que o usuário entenda. */
+function friendlyError(stderr) {
+  const text = stderr.toLowerCase();
+
+  if (text.includes('unsupported url')) return 'Não sei baixar vídeos desse site.';
+  if (text.includes('private') || text.includes('login required') || text.includes('sign in')) {
+    return 'Esse conteúdo é privado ou exige login.';
+  }
+  if (text.includes('not available') || text.includes('404') || text.includes('removed')) {
+    return 'Esse vídeo não existe mais ou não está disponível na minha região.';
+  }
+  if (text.includes('age')) return 'Esse vídeo tem restrição de idade.';
+  if (text.includes('file is larger') || text.includes('max-filesize')) {
+    return 'O vídeo é grande demais para o limite de upload deste servidor.';
+  }
+  if (text.includes('geo')) return 'Esse vídeo está bloqueado na região do servidor.';
+
+  logger.debug('Erro bruto do yt-dlp:', stderr.slice(0, 800));
+  return 'Não consegui baixar esse vídeo.';
+}
+
+/**
+ * Seletor de formato.
+ *
+ * Em plataformas como o TikTok, o yt-dlp expõe tanto a versão com a marca
+ * d'água da rede (normalmente sob `download_addr`) quanto a original limpa.
+ * Preferimos explicitamente a versão sem marca d'água, com fallback para
+ * qualquer formato caso a plataforma só ofereça a marcada.
+ */
+function formatSelector(maxBytes, audioOnly) {
+  if (audioOnly) return 'ba/b';
+
+  const clean = '[format_id!*=watermark][format_id!*=download_addr]';
+  return [
+    `bv*${clean}[filesize<${maxBytes}]+ba/b${clean}[filesize<${maxBytes}]`,
+    `b${clean}`,
+    `bv*[filesize<${maxBytes}]+ba/b[filesize<${maxBytes}]`,
+    'b',
+  ].join('/');
+}
+
+/** Busca os metadados sem baixar nada. */
+export async function probe(url) {
+  const { stdout } = await run(
+    ['--dump-single-json', '--no-playlist', '--no-warnings', '--skip-download', url],
+    METADATA_TIMEOUT,
+  );
+
+  const info = JSON.parse(stdout);
+  return {
+    title: info.title ?? 'sem título',
+    uploader: info.uploader ?? info.channel ?? null,
+    duration: info.duration ?? null,
+    extractor: info.extractor_key ?? info.extractor ?? 'desconhecido',
+    thumbnail: info.thumbnail ?? null,
+    webpage: info.webpage_url ?? url,
+    isLive: Boolean(info.is_live),
+  };
+}
+
+/**
+ * Baixa o vídeo (ou só o áudio) para um diretório temporário.
+ * Quem chama é responsável por invocar `cleanup()` no final.
+ */
+export async function download(url, { maxBytes, audioOnly = false }) {
+  if (!isEnabled) throw new Error('O yt-dlp não está instalado no servidor do bot.');
+  if (audioOnly && !ffmpegAvailable) {
+    throw new Error('Extrair áudio precisa do ffmpeg, que não está instalado no servidor do bot.');
+  }
+  if (running >= MAX_CONCURRENT) {
+    throw new Error('Já estou baixando outros vídeos agora. Tente de novo em instantes.');
+  }
+
+  running += 1;
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'bot-baixar-'));
+
+  const cleanup = async () => {
+    running = Math.max(0, running - 1);
+    await fs.rm(directory, { recursive: true, force: true }).catch(() => null);
+  };
+
+  try {
+    const args = [
+      '--no-playlist',
+      '--no-warnings',
+      '--no-progress',
+      '--no-continue',
+      '--max-filesize',
+      String(maxBytes),
+      '-f',
+      formatSelector(maxBytes, audioOnly),
+      '-o',
+      path.join(directory, 'video.%(ext)s'),
+    ];
+
+    if (audioOnly) args.push('--extract-audio', '--audio-format', 'mp3');
+    else if (ffmpegAvailable) args.push('--merge-output-format', 'mp4');
+
+    args.push(url);
+
+    await run(args, DOWNLOAD_TIMEOUT);
+
+    const files = await fs.readdir(directory);
+    if (files.length === 0) throw new Error('O download terminou sem gerar arquivo.');
+
+    const file = path.join(directory, files[0]);
+    const { size } = await fs.stat(file);
+
+    if (size > maxBytes) {
+      throw new Error('O arquivo ficou maior que o limite de upload deste servidor.');
+    }
+
+    return { file, size, cleanup };
+  } catch (error) {
+    await cleanup();
+    throw error;
+  }
+}
+
+/** Limite de upload do servidor, conforme o nível de impulso. */
+export function uploadLimitFor(guild) {
+  const byTier = { 0: 10, 1: 10, 2: 50, 3: 100 };
+  const megabytes = byTier[guild?.premiumTier ?? 0] ?? 10;
+  return megabytes * 1024 * 1024;
+}

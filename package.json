@@ -1,0 +1,35 @@
+{
+  "name": "bot",
+  "version": "1.0.0",
+  "description": "Bot de Discord multiuso: moderação, automod, níveis, economia, tickets, sorteios, logs, starboard e IA.",
+  "type": "module",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/sharding.js",
+    "start:single": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "deploy": "node scripts/deploy-commands.js",
+    "deploy:global": "node scripts/deploy-commands.js --global",
+    "clear": "node scripts/deploy-commands.js --clear"
+  },
+  "keywords": [
+    "discord",
+    "discord.js",
+    "bot",
+    "moderacao",
+    "automod",
+    "niveis",
+    "economia",
+    "tickets"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "better-sqlite3": "^12.6.0",
+    "discord.js": "^14.27.0",
+    "dotenv": "^17.2.3"
+  }
+}

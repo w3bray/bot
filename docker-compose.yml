@@ -1,0 +1,21 @@
+services:
+  bot:
+    build: .
+    # Se preferir não compilar na máquina, troque `build: .` por uma imagem
+    # publicada: image: ghcr.io/seu-usuario/bot:latest
+    container_name: discord-bot
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # O banco vive aqui e sobrevive a restarts, updates e reinício da máquina.
+      - bot-data:/data
+    # Sem isso, um bot com vazamento de memória pode derrubar o servidor inteiro.
+    mem_limit: 1g
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bot-data:
