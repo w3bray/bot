@@ -43,6 +43,8 @@ export const config = {
   guildId: process.env.GUILD_ID?.trim() || null,
   ownerIds: list('OWNER_IDS'),
   sharding: shardingMode(),
+  // Registra os comandos sozinho ao iniciar — útil em hospedagens sem terminal.
+  autoDeploy: /^(1|true|sim|yes)$/i.test((process.env.AUTO_DEPLOY ?? '').trim()),
   databasePath: process.env.DATABASE_PATH?.trim() || './data/bot.db',
   logLevel: process.env.LOG_LEVEL?.trim() || 'info',
   anthropic: {

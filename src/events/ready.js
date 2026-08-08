@@ -1,6 +1,7 @@
 import { ActivityType, Events } from 'discord.js';
 import { logger } from '../lib/logger.js';
 import { shardLabel, totalGuilds } from '../lib/shard.js';
+import { maybeDeployCommands } from '../services/autodeploy.js';
 
 export default {
   name: Events.ClientReady,
@@ -8,6 +9,8 @@ export default {
   async execute(client) {
     logger.info(`Conectado como ${client.user.tag} (${shardLabel(client)})`);
     logger.info(`Este processo atende ${client.guilds.cache.size} servidor(es).`);
+
+    await maybeDeployCommands(client);
 
     const updatePresence = async () => {
       // Mostra o total de todos os shards; se algum ainda não respondeu, cai

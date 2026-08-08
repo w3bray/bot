@@ -52,9 +52,22 @@ carregamento automático de comandos, eventos e botões.
 
 ---
 
+> **Quer deixar o bot online 24/7?** Veja o **[guia de hospedagem](DEPLOY.md)** —
+> passo a passo para quem está no celular, com Docker (traz `yt-dlp` e `ffmpeg`
+> embutidos, sem instalar nada na mão).
+
 ## Instalação
 
 Requisitos: **Node.js 20 ou superior**.
+
+Com Docker é mais simples — não precisa nem de Node instalado:
+
+```bash
+cp .env.example .env    # preencha DISCORD_TOKEN, CLIENT_ID e GUILD_ID
+docker compose up -d --build
+```
+
+Manualmente:
 
 ```bash
 git clone <url-do-repositorio>
