@@ -4,7 +4,11 @@ import { embed } from '../../lib/embeds.js';
 import { formatDuration } from '../../lib/time.js';
 import { shardInfo, totalGuilds, totalMembers } from '../../lib/shard.js';
 import { isEnabled as aiEnabled } from '../../services/ai.js';
-import { isEnabled as downloadEnabled, ytdlpVersion } from '../../services/downloader.js';
+import {
+  galleryDlVersion,
+  isEnabled as downloadEnabled,
+  ytdlpVersion,
+} from '../../services/downloader.js';
 
 export default {
   cooldown: 10,
@@ -53,7 +57,11 @@ export default {
           name: 'Recursos opcionais',
           value: [
             `\`/ia\`: ${aiEnabled ? 'ativo' : 'desativado'}`,
-            `\`/baixar\`: ${downloadEnabled ? `ativo (yt-dlp ${ytdlpVersion})` : 'desativado'}`,
+            `\`/baixar\`: ${
+              downloadEnabled
+                ? `ativo (yt-dlp ${ytdlpVersion ?? 'indisponível'} · gallery-dl ${galleryDlVersion ?? 'indisponível'})`
+                : 'desativado'
+            }`,
           ].join('\n'),
         },
       )
