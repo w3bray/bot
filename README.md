@@ -123,7 +123,7 @@ Enviar Mensagens, Inserir Links, Anexar Arquivos e Adicionar Reações.
 |---|---|---|
 | `DISCORD_TOKEN` | sim | Token do bot |
 | `CLIENT_ID` | sim | ID da aplicação |
-| `GUILD_ID` | não | ID do servidor de testes. Com ele, `npm run deploy` registra os comandos só nesse servidor e eles aparecem na hora. Sem ele, o registro é global e leva até 1 hora |
+| `GUILD_ID` | não | ID do servidor de testes, usado pelo `npm run deploy` para registro instantâneo. **Não afeta o `AUTO_DEPLOY`**, que registra sempre e só no global |
 | `OWNER_IDS` | não | IDs dos donos, separados por vírgula. Ignoram cooldowns e acessam `/dono`. **Pode deixar vazio**: o bot descobre sozinho quem é o dono da aplicação |
 | `DATABASE_PATH` | não | Caminho do arquivo SQLite (padrão `./data/bot.db`) |
 | `LOG_LEVEL` | não | `debug`, `info`, `warn` ou `error` |
@@ -324,26 +324,29 @@ Donos também **não pegam cooldown** em nenhum comando.
 
 ## Servidores ilimitados
 
-O bot funciona em **quantos servidores você quiser** sem cadastrar ID nenhum. O que muda
-é só onde os comandos ficam registrados:
+O bot funciona em **quantos servidores você quiser** sem cadastrar ID nenhum. Com
+`AUTO_DEPLOY=true` os comandos são registrados **só no escopo global**, que pertence à
+aplicação e não ao servidor — então valem em todo servidor onde o bot está, inclusive nos
+que ele entrar depois.
 
-| `GUILD_ID` no `.env` | Onde os comandos aparecem | Demora |
-|---|---|---|
-| preenchido | só naquele servidor | instantâneo |
-| vazio | em todos os servidores | até 1 hora na primeira vez |
+Para adicionar o bot em outro lugar, `/dono convite` dá o link. Não há passo de registro.
 
-Para liberar em todos, faça uma vez:
+### Por que não registrar também por servidor
 
-1. `/dono deploy escopo:Global` — registra os comandos globalmente;
-2. `/dono convite` — pega o link e adiciona o bot onde quiser.
+Comandos de servidor e comandos globais são **dois registros independentes**, e o Discord
+mostra **os dois** na lista. Registrar o mesmo conjunto nos dois escopos faz cada comando
+aparecer **duplicado** ao digitar `/`.
 
-O `GUILD_ID` pode continuar preenchido: nesse caso os comandos ficam registrados nos dois
-lugares e o Discord mostra a versão do servidor. Se quiser deixar só o global, apague a
-linha do `.env`, reinicie e rode `/dono deploy escopo:Limpar` no servidor antigo para
-remover a duplicata.
+Por isso o `AUTO_DEPLOY` usa apenas o global. Ele também apaga, na inicialização,
+registros de servidor deixados por versões antigas — a limpeza roda uma vez e depois não
+encontra mais nada para fazer.
 
-> O ID do servidor **nunca** foi obrigatório para o bot entrar num servidor — ele serve
-> apenas para o registro instantâneo dos comandos durante o desenvolvimento.
+Para desenvolver com registro instantâneo, desligue o `AUTO_DEPLOY` e use
+`npm run deploy` com `GUILD_ID` preenchido: aí o escopo de servidor é intencional e não há
+global para duplicar.
+
+> A espera de até uma hora vale para **mudanças** no conjunto de comandos globais se
+> propagarem, não para servidores novos.
 
 ---
 

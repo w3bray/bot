@@ -1,16 +1,14 @@
-import { Events, PermissionFlagsBits, REST, Routes } from 'discord.js';
-import { config } from '../config.js';
+import { Events, PermissionFlagsBits } from 'discord.js';
 import { logger } from '../lib/logger.js';
 import { contarRotas } from '../lib/rotas.js';
-import { registrar } from '../services/autodeploy.js';
 
 /**
  * O bot entrou num servidor novo.
  *
- * Registramos os comandos naquele servidor na hora. Os comandos globais já
- * cobrem todos os servidores, mas o Discord leva até uma hora para propagá-los
- * num servidor recém-adicionado — e nesse intervalo o bot parece quebrado, sem
- * nenhum comando disponível. O registro por servidor vale na mesma hora.
+ * Aqui NÃO registramos comandos. Os comandos globais pertencem à aplicação,
+ * não ao servidor, então já valem no momento em que o bot entra. Registrar de
+ * novo no escopo do servidor criaria um segundo conjunto, e o Discord mostra
+ * os dois — cada comando apareceria duplicado na lista.
  */
 export default {
   name: Events.GuildCreate,
@@ -20,26 +18,6 @@ export default {
       `Entrei em "${guild.name}" (${guild.id}) — ${guild.memberCount} membros. ` +
         `Agora em ${client.guilds.cache.size} servidor(es) neste processo.`,
     );
-
-    const body = client.commands.map((command) => command.data.toJSON());
-    const rest = new REST().setToken(config.token);
-
-    const ok = await registrar(
-      rest,
-      Routes.applicationGuildCommands(config.clientId, guild.id),
-      body,
-      `servidor "${guild.name}"`,
-      'GUILD_CREATE',
-    );
-
-    if (!ok) {
-      // A causa mais provável é o convite ter sido feito só com a scope `bot`.
-      // Não é fatal: os comandos globais aparecem quando o Discord propagar.
-      logger.warn(
-        `Se o erro acima for 403, o convite para "${guild.name}" foi feito sem a scope ` +
-          'applications.commands. Os comandos globais ainda vão aparecer em até 1 hora.',
-      );
-    }
 
     await apresentar(guild, client);
   },
@@ -67,6 +45,9 @@ async function apresentar(guild, client) {
         `Olá! Sou o **${client.user.username}**, e tenho **${rotas} comandos**.`,
         '',
         'Comece por `/ajuda` para ver a lista completa.',
+        '',
+        '_Se os comandos ainda não aparecerem ao digitar `/`, aguarde alguns instantes_',
+        '_e recarregue o Discord._',
         '',
         '_Se algum comando de moderação falhar, arraste meu cargo para o topo em_',
         '_Configurações do servidor → Cargos._',

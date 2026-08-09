@@ -10,13 +10,18 @@ import { logger } from '../lib/logger.js';
  * comandos são globais para a aplicação, então registrar uma vez por shard só
  * gastaria requisições e arriscaria rate limit.
  *
- * O registro GLOBAL é sempre feito. Antes, ter GUILD_ID preenchido trocava o
- * global pelo do servidor — e o bot ficava sem nenhum comando em todos os
- * outros servidores em que entrasse, o que parecia "o bot não funciona lá".
+ * SOMENTE global, e por um motivo aprendido errando: comandos de servidor e
+ * comandos globais são dois registros independentes, e o Discord mostra OS
+ * DOIS na lista. Registrar o mesmo conjunto nos dois escopos faz cada comando
+ * aparecer duplicado quando a pessoa digita "/".
  *
- * Quando GUILD_ID existe, o registro do servidor é feito TAMBÉM, porque ele é
- * instantâneo: o global leva até uma hora para aparecer na primeira vez. Onde
- * os dois existem, o Discord mostra o do servidor.
+ * O global cobre todos os servidores, inclusive os que o bot entrar depois —
+ * ele pertence à aplicação, não ao servidor. A espera de até uma hora vale
+ * para a propagação de mudanças no conjunto, não para servidores novos.
+ *
+ * Para desenvolver com registro instantâneo, use `npm run deploy` com GUILD_ID
+ * preenchido e AUTO_DEPLOY desligado — aí o escopo de servidor é intencional e
+ * o global não existe para duplicar.
  */
 export async function maybeDeployCommands(client) {
   if (!config.autoDeploy) return;
@@ -27,22 +32,41 @@ export async function maybeDeployCommands(client) {
   const body = client.commands.map((command) => command.data.toJSON());
   const rest = new REST().setToken(config.token);
 
-  const global = await registrar(rest, Routes.applicationCommands(config.clientId), body, 'global');
+  const ok = await registrar(rest, Routes.applicationCommands(config.clientId), body, 'global');
 
-  if (config.guildId) {
-    await registrar(
-      rest,
-      Routes.applicationGuildCommands(config.clientId, config.guildId),
-      body,
-      `servidor ${config.guildId}`,
+  if (ok) {
+    logger.info(
+      'AUTO_DEPLOY: os comandos globais valem em todos os servidores, inclusive nos que o bot entrar depois.',
     );
   }
 
-  if (global) {
-    logger.info(
-      'AUTO_DEPLOY: os comandos globais valem em todos os servidores. ' +
-        'Na primeira vez podem levar até 1 hora para aparecer nos servidores novos.',
-    );
+  await limparDuplicatas(client, rest);
+}
+
+/**
+ * Apaga registros de servidor deixados por versões anteriores.
+ *
+ * Até a correção, o bot registrava o mesmo conjunto no global E no servidor, o
+ * que duplicava tudo na lista. Quem já rodou aquela versão tem os registros de
+ * servidor gravados no Discord, e eles não somem sozinhos: precisam ser
+ * apagados uma vez. Depois disso o laço não encontra mais nada para fazer.
+ */
+async function limparDuplicatas(client, rest) {
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      const existentes = await rest.get(
+        Routes.applicationGuildCommands(config.clientId, guild.id),
+      );
+      if (existentes.length === 0) continue;
+
+      await rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body: [] });
+      logger.info(
+        `AUTO_DEPLOY: removi ${existentes.length} registro(s) de servidor em "${guild.name}" ` +
+          'que estavam duplicando a lista de comandos.',
+      );
+    } catch (error) {
+      logger.warn(`AUTO_DEPLOY: não consegui limpar os comandos de "${guild.name}":`, error.message);
+    }
   }
 }
 
