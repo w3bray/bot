@@ -1,6 +1,8 @@
 import { Events, PermissionFlagsBits, REST, Routes } from 'discord.js';
 import { config } from '../config.js';
 import { logger } from '../lib/logger.js';
+import { contarRotas } from '../lib/rotas.js';
+import { registrar } from '../services/autodeploy.js';
 
 /**
  * O bot entrou num servidor novo.
@@ -20,30 +22,31 @@ export default {
     );
 
     const body = client.commands.map((command) => command.data.toJSON());
+    const rest = new REST().setToken(config.token);
 
-    try {
-      const rest = new REST().setToken(config.token);
-      const result = await rest.put(
-        Routes.applicationGuildCommands(config.clientId, guild.id),
-        { body },
-      );
-      logger.info(`${result.length} comando(s) disponíveis imediatamente em "${guild.name}".`);
-    } catch (error) {
-      // Sem a scope applications.commands no convite, o Discord recusa com 403.
-      // Os comandos globais ainda vão aparecer quando propagarem, então isto
-      // não é motivo para nada além de um aviso.
+    const ok = await registrar(
+      rest,
+      Routes.applicationGuildCommands(config.clientId, guild.id),
+      body,
+      `servidor "${guild.name}"`,
+      'GUILD_CREATE',
+    );
+
+    if (!ok) {
+      // A causa mais provável é o convite ter sido feito só com a scope `bot`.
+      // Não é fatal: os comandos globais aparecem quando o Discord propagar.
       logger.warn(
-        `Não consegui registrar comandos em "${guild.name}": ${error.message}. ` +
-          'Se for 403, o convite foi feito sem a permissão applications.commands.',
+        `Se o erro acima for 403, o convite para "${guild.name}" foi feito sem a scope ` +
+          'applications.commands. Os comandos globais ainda vão aparecer em até 1 hora.',
       );
     }
 
-    await avisarDono(guild);
+    await apresentar(guild, client);
   },
 };
 
 /** Manda um oi no primeiro canal onde o bot consegue falar. */
-async function avisarDono(guild) {
+async function apresentar(guild, client) {
   const canal = guild.channels.cache.find(
     (c) =>
       c.isTextBased?.() &&
@@ -54,10 +57,14 @@ async function avisarDono(guild) {
   );
   if (!canal) return;
 
+  // Contado na hora: um número fixo aqui envelheceria a cada comando novo, e
+  // `commands.size` diria só os de topo, não as rotas que dá para executar.
+  const rotas = contarRotas(client.commands);
+
   await canal
     .send(
       [
-        `Olá! Sou o **${guild.client.user.username}**, e tenho **400 comandos**.`,
+        `Olá! Sou o **${client.user.username}**, e tenho **${rotas} comandos**.`,
         '',
         'Comece por `/ajuda` para ver a lista completa.',
         '',

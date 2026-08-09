@@ -2,6 +2,7 @@ import { InteractionContextType, MessageFlags, SlashCommandBuilder } from 'disco
 import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { isOwner } from '../../lib/owner.js';
+import { rotasDoComando } from '../../lib/rotas.js';
 
 const CATEGORIES = {
   moderacao: { label: '🛡️ Moderação', order: 1 },
@@ -58,7 +59,7 @@ export default {
       if (command.ownerOnly && !owner) continue;
 
       const category = command.category ?? 'utilidades';
-      const routes = getExecutableRoutes(command);
+      const routes = rotasDoComando(command);
 
       if (!grouped.has(category)) grouped.set(category, []);
       grouped.get(category).push(...routes);
@@ -99,29 +100,6 @@ export default {
     }
   },
 };
-
-function getExecutableRoutes(command) {
-  const json = command.data.toJSON();
-  const options = json.options ?? [];
-  const routes = [];
-
-  for (const option of options) {
-    if (option.type === 1) {
-      routes.push(`/${json.name} ${option.name}`);
-      continue;
-    }
-
-    if (option.type === 2) {
-      for (const subcommand of option.options ?? []) {
-        if (subcommand.type === 1) {
-          routes.push(`/${json.name} ${option.name} ${subcommand.name}`);
-        }
-      }
-    }
-  }
-
-  return routes.length > 0 ? routes : [`/${json.name}`];
-}
 
 function paginateRouteSections(sections, maxLength = 3500) {
   const pages = [];

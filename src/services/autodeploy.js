@@ -46,15 +46,21 @@ export async function maybeDeployCommands(client) {
   }
 }
 
-async function registrar(rest, rota, body, escopo) {
+/**
+ * Registra um corpo de comandos numa rota. Reaproveitado pelo guildCreate, que
+ * faz o mesmo trabalho quando o bot entra num servidor novo.
+ */
+export async function registrar(rest, rota, body, escopo, prefixo = 'AUTO_DEPLOY') {
   try {
     const result = await rest.put(rota, { body });
-    logger.info(`AUTO_DEPLOY: ${result.length} comando(s) registrado(s) — escopo: ${escopo}.`);
+    logger.info(`${prefixo}: ${result.length} comando(s) registrado(s) — escopo: ${escopo}.`);
     return true;
   } catch (error) {
     // Falhar aqui não pode derrubar o bot: os comandos antigos continuam
     // valendo, e o outro escopo ainda pode ter dado certo.
-    logger.error(`AUTO_DEPLOY: falhou no escopo ${escopo}: ${error.message}`);
+    // O erro inteiro, não só a mensagem: o código HTTP e o corpo da resposta
+    // do Discord são o que dizem se foi permissão, rate limit ou payload.
+    logger.error(`${prefixo}: falhou no escopo ${escopo}:`, error);
     return false;
   }
 }
