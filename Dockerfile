@@ -1,4 +1,4 @@
-# Imagem pronta do bot, com yt-dlp e ffmpeg já embutidos.
+# Imagem pronta do bot, com yt-dlp, gallery-dl e ffmpeg já embutidos.
 # Quem usa esta imagem não precisa instalar nada além do Docker.
 
 # --- etapa 1: dependências -------------------------------------------------
@@ -21,12 +21,17 @@ FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-# ffmpeg junta vídeo+áudio e gera o MP3; python3 é exigido pelo yt-dlp.
+# ffmpeg junta/separa as faixas sem reduzir qualidade; yt-dlp cuida de vídeo e
+# áudio; gallery-dl cuida de imagens, carrosséis e galerias.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg python3 ca-certificates curl \
+    && apt-get install -y --no-install-recommends ffmpeg python3 python3-venv ca-certificates curl \
     && curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
          -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp \
+    && python3 -m venv /opt/gallery-dl \
+    && /opt/gallery-dl/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/gallery-dl/bin/pip install --no-cache-dir gallery-dl \
+    && ln -s /opt/gallery-dl/bin/gallery-dl /usr/local/bin/gallery-dl \
     && apt-get purge -y curl \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
