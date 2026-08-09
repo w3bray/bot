@@ -239,6 +239,39 @@ CREATE TABLE IF NOT EXISTS suggestion_votes (
   vote       INTEGER NOT NULL,
   PRIMARY KEY (message_id, user_id)
 );
+
+-- Cooldowns que precisam sobreviver a reinício. O cooldown em memória do
+-- lib/cooldown.js zera quando o processo cai, o que num minijogo de economia
+-- vira farm: bastaria esperar o bot reiniciar para repetir a ação.
+CREATE TABLE IF NOT EXISTS acoes (
+  guild_id TEXT NOT NULL,
+  user_id  TEXT NOT NULL,
+  acao     TEXT NOT NULL,
+  quando   INTEGER NOT NULL,
+  PRIMARY KEY (guild_id, user_id, acao)
+);
+
+-- Itens da área pessoal: anotações, tarefas e metas. Um "tipo" em vez de três
+-- tabelas idênticas — as três guardam texto e data, e só a leitura difere.
+CREATE TABLE IF NOT EXISTS pessoal (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  user_id  TEXT NOT NULL,
+  tipo     TEXT NOT NULL,
+  texto    TEXT NOT NULL,
+  feito    INTEGER NOT NULL DEFAULT 0,
+  criado   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pessoal ON pessoal(guild_id, user_id, tipo, feito);
+
+-- Preferências avulsas de cada pessoa (aniversário, fuso horário e afins).
+CREATE TABLE IF NOT EXISTS preferencias (
+  guild_id TEXT NOT NULL,
+  user_id  TEXT NOT NULL,
+  chave    TEXT NOT NULL,
+  valor    TEXT NOT NULL,
+  PRIMARY KEY (guild_id, user_id, chave)
+);
 `);
 
 // Migrações leves: colunas adicionadas depois da primeira versão do bot.
