@@ -4,6 +4,7 @@ import { Collection, REST, Routes } from 'discord.js';
 import { config } from '../src/config.js';
 import { logger } from '../src/lib/logger.js';
 import { loadCommands } from '../src/handlers/loader.js';
+import { corpoDosComandos } from '../src/services/autodeploy.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const commandsPath = path.join(here, '..', 'src', 'commands');
@@ -15,7 +16,7 @@ const clear = process.argv.includes('--clear');
 const fake = { commands: new Collection() };
 await loadCommands(fake, commandsPath);
 
-const body = clear ? [] : fake.commands.map((command) => command.data.toJSON());
+const body = clear ? [] : corpoDosComandos(fake.commands);
 const rest = new REST().setToken(config.token);
 
 const scope = global || !config.guildId ? 'global' : `servidor ${config.guildId}`;

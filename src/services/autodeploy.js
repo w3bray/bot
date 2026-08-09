@@ -1,4 +1,4 @@
-import { REST, Routes } from 'discord.js';
+import { ApplicationIntegrationType, REST, Routes } from 'discord.js';
 import { config } from '../config.js';
 import { db } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
@@ -7,6 +7,26 @@ const jaVarrido = db.prepare('SELECT 1 FROM limpezas WHERE guild_id = ?');
 const marcarVarrido = db.prepare(
   'INSERT OR REPLACE INTO limpezas (guild_id, quando) VALUES (?, ?)',
 );
+
+/**
+ * O corpo enviado ao Discord, com o contexto de instalação fixado.
+ *
+ * Sem `integration_types` explícito, o comando herda os contextos configurados
+ * na aplicação. Com "User Install" ligado no portal, ele é registrado no
+ * contexto de servidor E no de usuário — e quem tiver o app instalado na
+ * própria conta vê cada comando DUAS VEZES na lista, mesmo sem existir nenhum
+ * registro em escopo de servidor.
+ *
+ * Este bot é de servidor. Fixar GuildInstall aqui elimina essa origem de
+ * duplicata na origem, e o próximo PUT substitui os registros antigos que
+ * tinham os dois contextos.
+ */
+export function corpoDosComandos(commands) {
+  return commands.map((command) => ({
+    ...command.data.toJSON(),
+    integration_types: [ApplicationIntegrationType.GuildInstall],
+  }));
+}
 
 /**
  * Registra os slash commands ao iniciar, quando AUTO_DEPLOY=true.
@@ -29,7 +49,7 @@ export async function maybeDeployCommands(client) {
   const isPrimary = client.shard ? client.shard.ids.includes(0) : true;
   if (!isPrimary) return;
 
-  const body = client.commands.map((command) => command.data.toJSON());
+  const body = corpoDosComandos(client.commands);
   const rest = new REST().setToken(config.token);
 
   const ok = await registrar(rest, Routes.applicationCommands(config.clientId), body, 'global');
