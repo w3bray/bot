@@ -1,6 +1,8 @@
-import { Events, PermissionFlagsBits } from 'discord.js';
+import { Events, PermissionFlagsBits, REST } from 'discord.js';
+import { config } from '../config.js';
 import { logger } from '../lib/logger.js';
 import { contarRotas } from '../lib/rotas.js';
+import { limparEscopoDeServidor } from '../services/autodeploy.js';
 
 /**
  * O bot entrou num servidor novo.
@@ -9,6 +11,11 @@ import { contarRotas } from '../lib/rotas.js';
  * não ao servidor, então já valem no momento em que o bot entra. Registrar de
  * novo no escopo do servidor criaria um segundo conjunto, e o Discord mostra
  * os dois — cada comando apareceria duplicado na lista.
+ *
+ * O que fazemos é o contrário: varrer o servidor atrás de registros de escopo
+ * deixados por uma instalação anterior do bot ali. Se o bot já esteve nesse
+ * servidor numa versão que gravava por servidor, aqueles registros continuam
+ * lá esperando para duplicar.
  */
 export default {
   name: Events.GuildCreate,
@@ -18,6 +25,14 @@ export default {
       `Entrei em "${guild.name}" (${guild.id}) — ${guild.memberCount} membros. ` +
         `Agora em ${client.guilds.cache.size} servidor(es) neste processo.`,
     );
+
+    // Uma requisição, uma vez por servidor: a marca em `limpezas` impede
+    // que a varredura se repita nas próximas inicializações.
+    if (config.autoDeploy) {
+      await limparEscopoDeServidor(client, new REST().setToken(config.token)).catch((error) =>
+        logger.warn(`Não consegui varrer "${guild.name}":`, error.message),
+      );
+    }
 
     await apresentar(guild, client);
   },

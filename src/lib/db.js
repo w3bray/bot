@@ -264,6 +264,14 @@ CREATE TABLE IF NOT EXISTS pessoal (
 );
 CREATE INDEX IF NOT EXISTS idx_pessoal ON pessoal(guild_id, user_id, tipo, feito);
 
+-- Servidores já varridos em busca de comandos registrados no escopo de
+-- servidor. Sem esta marca, a varredura repetiria uma requisição por servidor
+-- a cada inicialização — o que não escala com o bot em muitos servidores.
+CREATE TABLE IF NOT EXISTS limpezas (
+  guild_id TEXT PRIMARY KEY,
+  quando   INTEGER NOT NULL
+);
+
 -- Preferências avulsas de cada pessoa (aniversário, fuso horário e afins).
 CREATE TABLE IF NOT EXISTS preferencias (
   guild_id TEXT NOT NULL,
