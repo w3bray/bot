@@ -2,9 +2,9 @@
 
 Bot completo em **Node.js + discord.js v14**, com moderação, AutoMod, níveis, economia,
 perfis sociais, tickets, sorteios, enquetes, jogos, logs, starboard, painel de cargos,
-download de vídeos e um comando de IA.
+download de vídeos, construtor de servidor e um comando de IA.
 
-Tudo em português do Brasil, com **53 slash commands**, persistência em SQLite e
+Tudo em português do Brasil, com **55 slash commands**, persistência em SQLite e
 carregamento automático de comandos, eventos e botões.
 
 ---
@@ -16,6 +16,7 @@ carregamento automático de comandos, eventos e botões.
 - [Configuração no Discord](#configuração-no-discord)
 - [Primeiros passos no servidor](#primeiros-passos-no-servidor)
 - [Lista de comandos](#lista-de-comandos)
+- [Servidores ilimitados](#servidores-ilimitados)
 - [Sharding](#sharding)
 - [Comando de IA](#comando-de-ia)
 - [Estrutura do projeto](#estrutura-do-projeto)
@@ -121,7 +122,7 @@ Enviar Mensagens, Inserir Links, Anexar Arquivos e Adicionar Reações.
 | `DISCORD_TOKEN` | sim | Token do bot |
 | `CLIENT_ID` | sim | ID da aplicação |
 | `GUILD_ID` | não | ID do servidor de testes. Com ele, `npm run deploy` registra os comandos só nesse servidor e eles aparecem na hora. Sem ele, o registro é global e leva até 1 hora |
-| `OWNER_IDS` | não | IDs dos donos, separados por vírgula. Ignoram os cooldowns |
+| `OWNER_IDS` | não | IDs dos donos, separados por vírgula. Ignoram cooldowns e acessam `/dono`. **Pode deixar vazio**: o bot descobre sozinho quem é o dono da aplicação |
 | `DATABASE_PATH` | não | Caminho do arquivo SQLite (padrão `./data/bot.db`) |
 | `LOG_LEVEL` | não | `debug`, `info`, `warn` ou `error` |
 | `SHARDING` | não | `auto` (padrão), `off` ou um número. Veja [Sharding](#sharding) |
@@ -213,9 +214,66 @@ Na mensagem de nível: `{user}`, `{username}`, `{level}`, `{server}`.
 `/ticket abrir|fechar|adicionar|painel` · `/sorteio criar|encerrar|resortear` ·
 `/velha` · `/quiz` · `/bola8` · `/dado` · `/escolher` · `/ppt` · `/ship`
 
+### 🏗️ Servidor
+
+| Comando | O que faz |
+|---|---|
+| `/construir` | Monta categorias, canais e cargos a partir de um modelo pronto |
+
+Quatro modelos: **Hacking & Segurança**, **Comunidade**, **Gaming** e **Estudos**. O
+comando abre um painel com a prévia do que será criado e um menu para incluir ou não os
+cargos, os canais de voz e a área privada da staff. Nada é apagado — o construtor só
+adiciona ao que já existe.
+
+Exige **Gerenciar Servidor** de quem usa e **Gerenciar Canais** do bot (mais
+**Gerenciar Cargos**, se for criar os cargos).
+
+### 👑 Dono do bot
+
+Só aparece e só funciona para o dono da aplicação. Não precisa configurar nada: o bot
+pergunta ao Discord quem criou a aplicação. `OWNER_IDS` continua valendo para adicionar
+mais gente.
+
+| Comando | O que faz |
+|---|---|
+| `/dono servidores` | Lista todos os servidores em que o bot está, com IDs |
+| `/dono sair` | Faz o bot sair de um servidor pelo ID |
+| `/dono deploy` | Registra os comandos: global, só neste servidor, ou limpa |
+| `/dono convite` | Gera o link para adicionar o bot em servidores ilimitados |
+| `/dono moedas` | Cria ou remove moedas de alguém |
+| `/dono nivel` | Define o nível de alguém |
+| `/dono stats` | Servidores, membros, memória e ping somando todos os shards |
+
+Donos também **não pegam cooldown** em nenhum comando.
+
 ### 🧠 IA
 
 `/ia` — pergunta e resposta pela API da Anthropic.
+
+---
+
+## Servidores ilimitados
+
+O bot funciona em **quantos servidores você quiser** sem cadastrar ID nenhum. O que muda
+é só onde os comandos ficam registrados:
+
+| `GUILD_ID` no `.env` | Onde os comandos aparecem | Demora |
+|---|---|---|
+| preenchido | só naquele servidor | instantâneo |
+| vazio | em todos os servidores | até 1 hora na primeira vez |
+
+Para liberar em todos, faça uma vez:
+
+1. `/dono deploy escopo:Global` — registra os comandos globalmente;
+2. `/dono convite` — pega o link e adiciona o bot onde quiser.
+
+O `GUILD_ID` pode continuar preenchido: nesse caso os comandos ficam registrados nos dois
+lugares e o Discord mostra a versão do servidor. Se quiser deixar só o global, apague a
+linha do `.env`, reinicie e rode `/dono deploy escopo:Limpar` no servidor antigo para
+remover a duplicata.
+
+> O ID do servidor **nunca** foi obrigatório para o bot entrar num servidor — ele serve
+> apenas para o registro instantâneo dos comandos durante o desenvolvimento.
 
 ---
 

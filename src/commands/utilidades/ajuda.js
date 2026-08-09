@@ -1,20 +1,23 @@
 import { InteractionContextType, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
+import { isOwner } from '../../lib/owner.js';
 
 const CATEGORIES = {
   moderacao: { label: '🛡️ Moderação', order: 1 },
   automod: { label: '🤖 AutoMod', order: 2 },
   configuracao: { label: '⚙️ Configuração', order: 3 },
-  utilidades: { label: '🔧 Utilidades', order: 4 },
-  social: { label: '💞 Social', order: 5 },
-  niveis: { label: '📈 Níveis', order: 6 },
-  economia: { label: '🪙 Economia', order: 7 },
-  jogos: { label: '🎮 Jogos', order: 8 },
-  diversao: { label: '🎲 Diversão', order: 9 },
-  sorteios: { label: '🎉 Sorteios', order: 10 },
-  tickets: { label: '🎫 Tickets', order: 11 },
-  ia: { label: '🧠 Inteligência Artificial', order: 12 },
+  servidor: { label: '🏗️ Servidor', order: 4 },
+  utilidades: { label: '🔧 Utilidades', order: 5 },
+  social: { label: '💞 Social', order: 6 },
+  niveis: { label: '📈 Níveis', order: 7 },
+  economia: { label: '🪙 Economia', order: 8 },
+  jogos: { label: '🎮 Jogos', order: 9 },
+  diversao: { label: '🎲 Diversão', order: 10 },
+  sorteios: { label: '🎉 Sorteios', order: 11 },
+  tickets: { label: '🎫 Tickets', order: 12 },
+  ia: { label: '🧠 Inteligência Artificial', order: 13 },
+  dono: { label: '👑 Dono do bot', order: 14 },
 };
 
 export default {
@@ -44,13 +47,17 @@ export default {
     const requested = interaction.options.getString('comando');
     if (requested) return showCommand(interaction, client, requested);
 
+    const owner = isOwner(interaction.user.id);
     const grouped = new Map();
     for (const command of client.commands.values()) {
+      // Comandos de dono só aparecem para quem pode usá-los.
+      if (command.ownerOnly && !owner) continue;
       const category = command.category ?? 'utilidades';
       if (!grouped.has(category)) grouped.set(category, []);
       grouped.get(category).push(command);
     }
 
+    const visiveis = [...grouped.values()].reduce((sum, list) => sum + list.length, 0);
     const fields = [...grouped.entries()]
       .sort((a, b) => (CATEGORIES[a[0]]?.order ?? 99) - (CATEGORIES[b[0]]?.order ?? 99))
       .map(([category, commands]) => ({
@@ -68,7 +75,7 @@ export default {
           .setTitle(`Comandos de ${client.user.username}`)
           .setDescription(
             [
-              `Ao todo são **${client.commands.size}** comandos.`,
+              `Ao todo são **${visiveis}** comandos.`,
               'Use `/ajuda comando:<nome>` para ver os detalhes de um deles.',
             ].join('\n'),
           )

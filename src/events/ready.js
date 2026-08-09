@@ -1,5 +1,6 @@
 import { ActivityType, Events } from 'discord.js';
 import { logger } from '../lib/logger.js';
+import { discoverOwners } from '../lib/owner.js';
 import { shardLabel, totalGuilds } from '../lib/shard.js';
 import { maybeDeployCommands } from '../services/autodeploy.js';
 
@@ -10,6 +11,7 @@ export default {
     logger.info(`Conectado como ${client.user.tag} (${shardLabel(client)})`);
     logger.info(`Este processo atende ${client.guilds.cache.size} servidor(es).`);
 
+    await discoverOwners(client);
     await maybeDeployCommands(client);
 
     const updatePresence = async () => {

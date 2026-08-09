@@ -1,6 +1,6 @@
 import { Events, MessageFlags } from 'discord.js';
-import { config } from '../config.js';
 import { logger } from '../lib/logger.js';
+import { isOwner } from '../lib/owner.js';
 import { embed, replyError } from '../lib/embeds.js';
 import { checkCooldown } from '../lib/cooldown.js';
 import { formatDuration } from '../lib/time.js';
@@ -26,16 +26,22 @@ async function runCommand(interaction, client) {
     return replyError(interaction, 'Este comando só funciona dentro de um servidor.');
   }
 
-  if (command.ownerOnly && !config.ownerIds.includes(interaction.user.id)) {
+  const owner = isOwner(interaction.user.id);
+
+  if (command.ownerOnly && !owner) {
     return replyError(interaction, 'Apenas os donos do bot podem usar este comando.');
   }
 
-  const remaining = checkCooldown(command.data.name, interaction.user.id, command.cooldown);
-  if (remaining > 0) {
-    return replyError(
-      interaction,
-      `Calma lá! Tente novamente em **${formatDuration(remaining)}**.`,
-    );
+  // Donos não pegam cooldown: é o que o .env.example promete e o que torna os
+  // comandos de administração utilizáveis em sequência.
+  if (!owner) {
+    const remaining = checkCooldown(command.data.name, interaction.user.id, command.cooldown);
+    if (remaining > 0) {
+      return replyError(
+        interaction,
+        `Calma lá! Tente novamente em **${formatDuration(remaining)}**.`,
+      );
+    }
   }
 
   try {
