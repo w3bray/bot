@@ -234,6 +234,25 @@ Só aparece e só funciona para o dono da aplicação. Não precisa configurar n
 pergunta ao Discord quem criou a aplicação. `OWNER_IDS` continua valendo para adicionar
 mais gente.
 
+São três camadas, e a do meio é a que realmente tranca:
+
+1. O comando tem `default_member_permissions = 0`, então **some do menu** de quem não é
+   administrador do servidor;
+2. A cada uso, o bot compara o ID de quem chamou com a lista de donos — **é essa a
+   trava**, e ela roda no seu servidor, não no Discord. Quem não passa recebe recusa e
+   o comando **nunca chega a executar**;
+3. O autocomplete tem a mesma checagem, porque é uma porta de entrada separada do
+   `execute`.
+
+Se a lista de donos estiver vazia (a consulta ao Discord falhou e o `OWNER_IDS` está em
+branco), **ninguém** é dono — inclusive você. A falha é fechada de propósito.
+
+Tentativas negadas aparecem nos logs com o nome e o ID de quem tentou:
+
+```
+WARN  Acesso negado: fulano (123…) tentou /dono em Servidor X (456…).
+```
+
 | Comando | O que faz |
 |---|---|
 | `/dono servidores` | Lista todos os servidores em que o bot está, com IDs |
