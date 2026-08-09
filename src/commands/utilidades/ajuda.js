@@ -50,44 +50,112 @@ export default {
 
     const owner = isOwner(interaction.user.id);
     const grouped = new Map();
+    let principalCount = 0;
+    let routeCount = 0;
+
     for (const command of client.commands.values()) {
       // Comandos de dono só aparecem para quem pode usá-los.
       if (command.ownerOnly && !owner) continue;
+
       const category = command.category ?? 'utilidades';
+      const routes = getExecutableRoutes(command);
+
       if (!grouped.has(category)) grouped.set(category, []);
-      grouped.get(category).push(command);
+      grouped.get(category).push(...routes);
+      principalCount += 1;
+      routeCount += routes.length;
     }
 
-    const visiveis = [...grouped.values()].reduce((sum, list) => sum + list.length, 0);
-    const fields = [...grouped.entries()]
+    const sections = [...grouped.entries()]
       .sort((a, b) => (CATEGORIES[a[0]]?.order ?? 99) - (CATEGORIES[b[0]]?.order ?? 99))
-      .map(([category, commands]) => ({
-        name: `${CATEGORIES[category]?.label ?? category} (${commands.length})`,
-        value: commands
-          .map((command) => `\`/${command.data.name}\``)
-          .sort()
-          .join(' '),
+      .map(([category, routes]) => ({
+        label: CATEGORIES[category]?.label ?? category,
+        routes: routes.sort((a, b) => a.localeCompare(b, 'pt-BR')),
       }));
+    const pages = paginateRouteSections(sections);
 
-    await interaction.reply({
-      embeds: [
-        embed
-          .base(colors.primary)
-          .setTitle(`Comandos de ${client.user.username}`)
-          .setDescription(
-            [
-              `Ao todo são **${visiveis}** comandos.`,
-              'Use `/ajuda comando:<nome>` para ver os detalhes de um deles.',
-            ].join('\n'),
-          )
-          .setThumbnail(client.user.displayAvatarURL({ size: 256 }))
-          .addFields(fields)
-          .setFooter({ text: 'Alguns comandos exigem permissões específicas.' }),
-      ],
-      flags: MessageFlags.Ephemeral,
-    });
+    if (pages.length === 0) {
+      return replyError(interaction, 'Nenhum comando está disponível para você.');
+    }
+
+    const intro = [
+      `**${principalCount} comandos principais · ${routeCount} rotas executáveis**`,
+      'A lista abaixo inclui literalmente cada comando, subcomando e grupo disponível.',
+      'Use `/ajuda comando:<nome>` para ver detalhes e opções de um comando principal.',
+    ].join('\n');
+
+    for (let index = 0; index < pages.length; index += 1) {
+      const help = embed
+        .base(colors.primary)
+        .setTitle(`Comandos de ${client.user.username} · Página ${index + 1}/${pages.length}`)
+        .setDescription(index === 0 ? `${intro}\n\n${pages[index]}` : pages[index])
+        .setFooter({ text: 'Alguns comandos exigem permissões específicas.' });
+
+      if (index === 0) help.setThumbnail(client.user.displayAvatarURL({ size: 256 }));
+
+      const payload = { embeds: [help], flags: MessageFlags.Ephemeral };
+      if (index === 0) await interaction.reply(payload);
+      else await interaction.followUp(payload);
+    }
   },
 };
+
+function getExecutableRoutes(command) {
+  const json = command.data.toJSON();
+  const options = json.options ?? [];
+  const routes = [];
+
+  for (const option of options) {
+    if (option.type === 1) {
+      routes.push(`/${json.name} ${option.name}`);
+      continue;
+    }
+
+    if (option.type === 2) {
+      for (const subcommand of option.options ?? []) {
+        if (subcommand.type === 1) {
+          routes.push(`/${json.name} ${option.name} ${subcommand.name}`);
+        }
+      }
+    }
+  }
+
+  return routes.length > 0 ? routes : [`/${json.name}`];
+}
+
+function paginateRouteSections(sections, maxLength = 3500) {
+  const pages = [];
+  let current = '';
+
+  const flush = () => {
+    const page = current.trim();
+    if (page) pages.push(page);
+    current = '';
+  };
+
+  for (const section of sections) {
+    const heading = `### ${section.label} (${section.routes.length} rotas)\n`;
+
+    if (current && current.length + heading.length > maxLength) flush();
+    current += heading;
+
+    for (const route of section.routes) {
+      const token = `\`${route}\` `;
+
+      if (current.length + token.length > maxLength) {
+        flush();
+        current = `### ${section.label} (continuação)\n`;
+      }
+
+      current += token;
+    }
+
+    current = `${current.trimEnd()}\n\n`;
+  }
+
+  flush();
+  return pages;
+}
 
 async function showCommand(interaction, client, name) {
   const command = client.commands.get(name);
