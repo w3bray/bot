@@ -39,13 +39,50 @@ echo
 
 # --- 1. dependências do sistema --------------------------------------------
 
-amarelo "[1/4] Instalando Docker e Git (pode levar alguns minutos)…"
+amarelo "[1/4] Conferindo Docker e Git…"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y -qq docker.io docker-compose-v2 git >/dev/null
+
+# Vários provedores (Hostinger, DigitalOcean, Contabo…) já entregam a imagem com
+# o Docker oficial do docker.com. Instalar o docker.io do Ubuntu por cima quebra
+# o apt, porque containerd.io e containerd se excluem mutuamente:
+#
+#   containerd.io : Conflicts: containerd
+#   E: Error, pkgProblemResolver::Resolve generated breaks
+#
+# Então instalamos só o que estiver faltando de verdade.
+faltando=()
+command -v git >/dev/null 2>&1 || faltando+=(git)
+
+if docker compose version >/dev/null 2>&1; then
+  echo "      Docker e Compose já instalados — aproveitando os que já estão aqui."
+elif command -v docker >/dev/null 2>&1; then
+  # Docker existe, mas sem o plugin do compose. O nome do pacote muda conforme a
+  # origem do Docker: docker-compose-plugin no repositório do docker.com,
+  # docker-compose-v2 no do Ubuntu. Tentamos os dois antes de desistir.
+  echo "      Docker encontrado, mas sem o plugin do Compose. Instalando…"
+  apt-get update -qq
+  apt-get install -y -qq docker-compose-plugin >/dev/null 2>&1 ||
+    apt-get install -y -qq docker-compose-v2 >/dev/null 2>&1 ||
+    erro "Não consegui instalar o plugin do Docker Compose."
+else
+  faltando+=(docker.io docker-compose-v2)
+fi
+
+if ((${#faltando[@]} > 0)); then
+  echo "      Instalando: ${faltando[*]} (pode levar alguns minutos)…"
+  apt-get update -qq
+  # Se a instalação silenciosa falhar, repetimos sem -qq para que o erro do apt
+  # apareça na tela: uma linha "E: ..." sozinha não diz o que conflitou.
+  apt-get install -y -qq "${faltando[@]}" >/dev/null 2>&1 || {
+    vermelho "A instalação falhou. Saída completa do apt:"
+    apt-get install -y "${faltando[@]}" || erro "Não consegui instalar: ${faltando[*]}"
+  }
+fi
+
 systemctl enable --now docker >/dev/null 2>&1 || true
 
-docker compose version >/dev/null 2>&1 || erro "O Docker Compose não ficou disponível."
+docker compose version >/dev/null 2>&1 ||
+  erro "O Docker Compose não ficou disponível. Rode 'docker compose version' para ver o motivo."
 
 # --- 2. código -------------------------------------------------------------
 
