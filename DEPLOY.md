@@ -16,15 +16,19 @@ Guia para quem está no celular e nunca hospedou nada.
 Serve para **testar**. Não serve para deixar no ar.
 
 Para 24/7 de verdade o bot precisa morar num computador que nunca desliga. Há
-dois caminhos, os dois controlados **pelo próprio celular**:
+três caminhos, os três controlados **pelo próprio celular**:
 
 | | Custo | Facilidade | Tudo funciona? |
 |---|---|---|---|
 | **[Opção A](#opção-a--vps-com-o-instalador-automático-recomendada)** — VPS | a partir de uns R$ 25/mês | 2 comandos | ✅ sim, incluindo `/baixar` |
-| **[Opção B](#opção-b--hospedagem-gratuita-para-bots-sem-cartão-sem-terminal)** — painel grátis | R$ 0 | sem terminal, só cliques | ⚠️ sem `/baixar`, e precisa renovar |
+| **[Opção B](#opção-b--hospedagem-brasileira-de-bots-barata-e-sem-terminal)** — painel brasileiro | poucos reais por mês | sem terminal, só upload | ⚠️ `/baixar` provavelmente não |
+| **[Opção C](#opção-c--hospedagem-gratuita-para-bots-sem-cartão-sem-terminal)** — painel grátis | R$ 0 | sem terminal, só cliques | ⚠️ sem `/baixar`, e precisa renovar |
 
-**Sem dinheiro? Vá direto para a Opção B.** Ela funciona, é a mais fácil de todas
-e não pede cartão — você só abre mão do comando de baixar vídeo.
+**Achou o VPS caro?** A Opção B custa uma fração disso, aceita **Pix**, não pede
+documento e não tem terminal nenhum. **Sem dinheiro nenhum?** Opção C.
+
+Nos dois casos você abre mão do comando de baixar vídeo — os outros 52 continuam
+funcionando igual.
 
 ---
 
@@ -284,7 +288,71 @@ compilar. É normal, e acontece uma vez só.
 
 ---
 
-## Opção B — hospedagem gratuita para bots (sem cartão, sem terminal)
+## Opção B — hospedagem brasileira de bots, barata e sem terminal
+
+Se o VPS ficou caro, este é o meio-termo. **SquareCloud** e **Discloud** são
+brasileiras, feitas só para bots de Discord: pagam-se com **Pix**, custam poucos
+reais por mês, ativam na hora e **não pedem documento**. Não tem SSH, não tem
+Docker — você manda um `.zip` e clica em ligar.
+
+O repositório já vem com os dois arquivos de configuração prontos:
+`squarecloud.app` e `discloud.config`. Os dois apontam para `src/index.js`, que é
+o processo único — sem supervisor de shard, para caber na memória do plano
+básico.
+
+> Os campos desses arquivos mudam de vez em quando. Se o painel reclamar de algum,
+> confira o nome na documentação do serviço e corrija — é um arquivo de seis
+> linhas.
+
+### O que você perde
+
+| Limitação | Consequência |
+|---|---|
+| **Sem `yt-dlp`** | O `/baixar` provavelmente não funciona. O bot detecta a ausência sozinho e o comando só avisa que está indisponível — nada mais quebra. |
+| **Memória do plano básico** | Normalmente 512 MB. O bot usa ~200 MB em operação, então cabe, mas não sobra para crescer muito. |
+
+### Passo a passo
+
+**1.** Baixe o projeto como `.zip`: abra
+`https://github.com/w3bray/bot` → botão verde **Code** → **Download ZIP**.
+
+**2.** Crie o `.env` dentro da pasta, no mesmo nível do `package.json`. Nesses
+painéis **não existe tela de variáveis de ambiente** — a configuração vai dentro
+do zip mesmo:
+
+```
+DISCORD_TOKEN=seu_token_aqui
+CLIENT_ID=seu_application_id
+GUILD_ID=id_do_seu_servidor
+AUTO_DEPLOY=true
+SHARDING=off
+```
+
+> 🔒 **Esse zip passa a conter o seu token.** Não mande ele para ninguém, não
+> poste em servidor de Discord e não suba para o GitHub. Se escapar, vá no
+> Developer Portal → aba **Bot** → *Reset Token* e refaça o `.env`.
+
+**3.** Apague a pasta `node_modules` do zip, se ela estiver lá. O painel instala
+as dependências sozinho, e ela deixa o upload gigante.
+
+**4.** Crie a conta no serviço escolhido, escolha o plano mais barato, pague no
+Pix e envie o zip pelo site — dá para fazer tudo pelo navegador do celular.
+
+**5.** Clique em **Iniciar**. Quando aparecer `Conectado como SeuBot#0000` nos
+logs, está no ar.
+
+`AUTO_DEPLOY=true` faz o bot registrar os comandos sozinho na primeira vez, já
+que aqui você não tem terminal para rodar `npm run deploy`.
+
+### Os seus dados
+
+Vale o mesmo teste da Opção C: reinicie uma vez pelo painel e veja se o `/rank`
+de alguém continua igual. Se zerar, o disco é efêmero e não dá para guardar
+níveis e economia ali.
+
+---
+
+## Opção C — hospedagem gratuita para bots (sem cartão, sem terminal)
 
 Serviços como **bot-hosting.net**, **Sparked Host (plano free)** e outros painéis
 parecidos são feitos especificamente para bots de Discord. Não pedem cartão, não
@@ -371,7 +439,7 @@ da Opção A funciona, e dá para levar seu `data/bot.db` junto.
 
 ---
 
-## Opção C — Termux, só para testar
+## Opção D — Termux, só para testar
 
 Roda no próprio celular. **Não é 24/7**, mas serve para ver o bot funcionando
 antes de gastar dinheiro.
@@ -401,7 +469,7 @@ assim ele cai ao reiniciar o aparelho.
 |---|---|
 | `permission denied` no docker | Faltou o `sudo` na frente do comando |
 | Bot conecta mas os comandos não aparecem | Confirme `AUTO_DEPLOY=true` no `.env` e reinicie. Sem `GUILD_ID`, comandos globais levam até 1 hora |
-| Níveis e economia zeram sozinhos | Disco efêmero (veja a Opção B). No Docker isso não acontece por causa do volume |
+| Níveis e economia zeram sozinhos | Disco efêmero (veja a Opção C). No Docker isso não acontece por causa do volume |
 | `/baixar` diz que está desativado | Você não está usando o Dockerfile. No VPS com Docker ele já vem pronto |
 | Bot fica offline sozinho | Sinal de pouca memória. Veja `sudo docker compose logs --tail 50` |
 | Ban, kick ou autorole falham | O cargo do bot está abaixo do cargo do alvo. Arraste o cargo do bot para o topo |
