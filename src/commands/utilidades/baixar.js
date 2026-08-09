@@ -1,45 +1,58 @@
+import path from 'node:path';
 import { AttachmentBuilder, InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { formatDuration } from '../../lib/time.js';
 import {
-  MAX_DURATION_SECONDS,
+  DOWNLOAD_MODES,
   download,
-  isEnabled,
   probe,
   splitForUpload,
   uploadLimitFor,
   validateUrl,
 } from '../../services/downloader.js';
 
-// Uma parte por mensagem mantém cada requisição abaixo do teto HTTP do Discord.
+// Um anexo por mensagem respeita tanto o teto por arquivo quanto o teto total
+// de cada requisição do Discord, inclusive em servidores com boost.
 const MAX_ATTACHMENTS_PER_MESSAGE = 1;
+
+const KIND_LABELS = {
+  video: { singular: 'vídeo', plural: 'vídeos' },
+  audio: { singular: 'áudio', plural: 'áudios' },
+  image: { singular: 'imagem', plural: 'imagens' },
+};
 
 export default {
   cooldown: 30,
   data: new SlashCommandBuilder()
     .setName('baixar')
-    .setDescription('Baixa um vídeo a partir do link e envia aqui no canal.')
+    .setDescription('Baixa vídeo, áudio e imagens na melhor qualidade disponível.')
     .addStringOption((option) =>
       option
         .setName('link')
-        .setDescription('Link do vídeo (TikTok, YouTube, Instagram, X, Twitch, Reddit…)')
+        .setDescription('Link público da publicação, vídeo, faixa ou galeria')
         .setRequired(true)
         .setMaxLength(500),
     )
+    .addStringOption((option) =>
+      option
+        .setName('tipo')
+        .setDescription('O que baixar (o padrão é tudo)')
+        .addChoices(
+          { name: 'Tudo: vídeo + áudio + todas as imagens', value: DOWNLOAD_MODES.ALL },
+          { name: 'Somente vídeo', value: DOWNLOAD_MODES.VIDEO },
+          { name: 'Somente áudio', value: DOWNLOAD_MODES.AUDIO },
+          { name: 'Somente imagens/carrossel', value: DOWNLOAD_MODES.IMAGES },
+        ),
+    )
     .addBooleanOption((option) =>
-      option.setName('audio').setDescription('Baixar somente o áudio, em MP3'),
+      option
+        .setName('audio')
+        .setDescription('Compatibilidade antiga: equivale a tipo Somente áudio'),
     )
     .setContexts(InteractionContextType.Guild),
 
   async execute(interaction) {
-    if (!isEnabled) {
-      return replyError(
-        interaction,
-        'O download de vídeos não está disponível: o `yt-dlp` não está instalado no servidor do bot.',
-      );
-    }
-
     let url;
     try {
       url = validateUrl(interaction.options.getString('link'));
@@ -47,151 +60,201 @@ export default {
       return replyError(interaction, error.message);
     }
 
-    const audioOnly = interaction.options.getBoolean('audio') ?? false;
+    const legacyAudio = interaction.options.getBoolean('audio') ?? false;
+    const mode = legacyAudio
+      ? DOWNLOAD_MODES.AUDIO
+      : (interaction.options.getString('tipo') ?? DOWNLOAD_MODES.ALL);
     const maxBytes = uploadLimitFor(interaction);
 
     await interaction.deferReply();
 
-    // 1) Metadados primeiro: rejeita lives e vídeos longos antes de gastar banda.
     let info;
     try {
-      info = await probe(url);
+      info = await probe(url, { mode });
     } catch (error) {
       return interaction.editReply({ embeds: [embed.error(error.message)] });
     }
 
     if (info.isLive) {
       return interaction.editReply({
-        embeds: [embed.error('Não dá para baixar uma transmissão ao vivo.')],
-      });
-    }
-
-    if (info.duration && info.duration > MAX_DURATION_SECONDS) {
-      return interaction.editReply({
-        embeds: [
-          embed.error(
-            `Esse vídeo tem ${formatDuration(info.duration * 1000)} e o limite é ${formatDuration(MAX_DURATION_SECONDS * 1000)}.`,
-          ),
-        ],
+        embeds: [embed.error('Não dá para fechar e enviar uma transmissão enquanto ela está ao vivo.')],
       });
     }
 
     await interaction.editReply({
       embeds: [
-        embed.info(`Baixando **${info.title}**… isso pode levar alguns segundos.`),
+        embed.info(
+          `Baixando **${info.title}** na maior qualidade disponível… ` +
+            'vídeos grandes e carrosséis podem demorar.',
+        ),
       ],
     });
 
-    // 2) Download propriamente dito.
     let result;
     try {
-      // O download não usa o teto do Discord. Se o arquivo for maior, ele será
-      // dividido em partes abaixo do limite obrigatório de cada anexo.
-      result = await download(url, { audioOnly });
+      result = await download(url, { mode });
     } catch (error) {
-      return interaction.editReply({
-        embeds: [embed.error(error.message)],
-      });
+      return interaction.editReply({ embeds: [embed.error(error.message)] });
     }
 
     try {
-      const extension = audioOnly ? 'mp3' : 'mp4';
       const baseName =
-        info.title.replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 60).trim() || 'video';
-
-      if (result.size > maxBytes) {
+        info.title.replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 48).trim() || 'midia';
+      const oversized = result.assets.filter((asset) => asset.size > maxBytes).length;
+      if (oversized > 0) {
         await interaction.editReply({
           embeds: [
             embed.info(
-              `O arquivo tem ${(result.size / 1024 / 1024).toFixed(1)} MB. Dividindo em partes para enviar pelo Discord…`,
+              `${oversized} arquivo(s) ultrapassam o teto de anexo do Discord. ` +
+                'Dividindo apenas para transporte, sem reduzir qualidade…',
             ),
           ],
         });
       }
 
-      const delivery = await splitForUpload(result.file, {
-        maxBytes,
-        duration: info.duration,
-        audioOnly,
-      });
-      const totalParts = delivery.parts.length;
+      const kindIndexes = { video: 0, audio: 0, image: 0 };
+      const prepared = [];
+      let hasBinaryParts = false;
+
+      for (const asset of result.assets) {
+        kindIndexes[asset.kind] += 1;
+        const extension = path.extname(asset.file).slice(1).toLowerCase() || 'bin';
+        const delivery = await splitForUpload(asset.file, {
+          maxBytes,
+          duration: asset.kind === 'image' ? null : info.duration,
+          kind: asset.kind,
+          extension,
+        });
+        hasBinaryParts ||= !delivery.playable;
+
+        const kindCount = result.assets.filter((item) => item.kind === asset.kind).length;
+        const suffix =
+          result.assets.length === 1
+            ? ''
+            : `-${asset.kind}-${String(kindIndexes[asset.kind]).padStart(
+                Math.max(2, String(kindCount).length),
+                '0',
+              )}`;
+        const stem = `${baseName}${suffix}`;
+
+        delivery.parts.forEach((file, partIndex) => {
+          const number = String(partIndex + 1).padStart(
+            Math.max(3, String(delivery.parts.length).length),
+            '0',
+          );
+          const name =
+            delivery.parts.length === 1
+              ? `${stem}.${extension}`
+              : delivery.playable
+                ? `${stem}-parte-${number}.${extension}`
+                : `${stem}.${extension}.part${number}`;
+          prepared.push({
+            file,
+            name,
+            kind: asset.kind,
+            source: asset.source,
+            assetIndex: kindIndexes[asset.kind],
+            assetCount: kindCount,
+            partIndex: partIndex + 1,
+            partCount: delivery.parts.length,
+          });
+        });
+      }
+
+      const counts = Object.keys(KIND_LABELS)
+        .map((kind) => ({
+          kind,
+          count: result.assets.filter((asset) => asset.kind === kind).length,
+        }))
+        .filter(({ count }) => count > 0);
+      const countText = counts
+        .map(({ kind, count }) => {
+          const label = count === 1 ? KIND_LABELS[kind].singular : KIND_LABELS[kind].plural;
+          return `${count} ${label}`;
+        })
+        .join(' · ');
 
       const resultEmbed = embed
         .base(colors.success)
         .setTitle(info.title.slice(0, 250))
         .setURL(info.webpage)
         .addFields(
+          { name: 'Baixado', value: countText, inline: false },
           { name: 'Fonte', value: info.extractor, inline: true },
-          {
-            name: 'Duração',
-            value: info.duration ? formatDuration(info.duration * 1000) : 'desconhecida',
-            inline: true,
-          },
-          {
-            name: 'Tamanho total',
-            value: `${(result.size / 1024 / 1024).toFixed(1)} MB`,
-            inline: true,
-          },
-          ...(info.uploader ? [{ name: 'Autor', value: info.uploader, inline: true }] : []),
-          ...(totalParts > 1
+          ...(info.duration
             ? [
                 {
-                  name: 'Entrega',
-                  value: `${totalParts} partes de até ${(maxBytes / 1024 / 1024).toFixed(0)} MB cada.`,
+                  name: 'Duração',
+                  value: formatDuration(info.duration * 1000),
                   inline: true,
                 },
               ]
             : []),
-          ...(!delivery.playable
+          {
+            name: 'Tamanho original total',
+            value: `${(result.size / 1024 / 1024).toFixed(1)} MB`,
+            inline: true,
+          },
+          {
+            name: 'Entrega',
+            value:
+              `${result.assets.length} arquivo(s) original(is) em ${prepared.length} anexo(s). ` +
+              `Cada anexo respeita ${(maxBytes / 1024 / 1024).toFixed(0)} MB.`,
+          },
+          ...(info.uploader ? [{ name: 'Autor', value: info.uploader, inline: true }] : []),
+          ...(result.warnings.length > 0
             ? [
                 {
-                  name: 'Como remontar',
+                  name: 'Não disponível nessa publicação',
+                  value: result.warnings.join('\n').slice(0, 1024),
+                },
+              ]
+            : []),
+          ...(hasBinaryParts
+            ? [
+                {
+                  name: 'Partes sem perda',
                   value:
-                    `Baixe todas as partes e junte na ordem. No Linux/macOS: ` +
-                    `\`cat "${baseName}.${extension}.part"* > "${baseName}.${extension}"\`.`,
+                    'Arquivos `.part001`, `.part002`… são pedaços binários do original. ' +
+                    'Baixe todos e concatene na ordem para reconstruir o arquivo exato.',
                 },
               ]
             : []),
         )
         .setFooter({
-          text: 'Respeite os direitos autorais e os termos de uso da plataforma de origem.',
+          text: 'A disponibilidade depende do acesso público e do que a plataforma entrega aos extratores.',
         });
 
-      const attachmentFor = (file, index) => {
-        if (totalParts === 1) {
-          return new AttachmentBuilder(file, { name: `${baseName}.${extension}` });
-        }
-
-        const number = String(index + 1).padStart(Math.max(3, String(totalParts).length), '0');
-        const name = delivery.playable
-          ? `${baseName}-parte-${number}.${extension}`
-          : `${baseName}.${extension}.part${number}`;
-        return new AttachmentBuilder(file, { name });
-      };
-
-      const firstBatch = delivery.parts.slice(0, MAX_ATTACHMENTS_PER_MESSAGE);
-
+      const attachmentFor = (item) => new AttachmentBuilder(item.file, { name: item.name });
+      const firstBatch = prepared.slice(0, MAX_ATTACHMENTS_PER_MESSAGE);
       await interaction.editReply({
         embeds: [resultEmbed],
-        files: firstBatch.map((file, index) => attachmentFor(file, index)),
+        files: firstBatch.map(attachmentFor),
       });
 
       for (
         let start = MAX_ATTACHMENTS_PER_MESSAGE;
-        start < totalParts;
+        start < prepared.length;
         start += MAX_ATTACHMENTS_PER_MESSAGE
       ) {
-        const batch = delivery.parts.slice(start, start + MAX_ATTACHMENTS_PER_MESSAGE);
+        const batch = prepared.slice(start, start + MAX_ATTACHMENTS_PER_MESSAGE);
+        const item = batch[0];
+        const label = KIND_LABELS[item.kind].singular;
+        const detail =
+          item.partCount > 1
+            ? `${label} ${item.assetIndex}/${item.assetCount} · parte ${item.partIndex}/${item.partCount}`
+            : `${label} ${item.assetIndex}/${item.assetCount}`;
         await interaction.followUp({
-          content: `Partes ${start + 1}–${start + batch.length} de ${totalParts}:`,
-          files: batch.map((file, offset) => attachmentFor(file, start + offset)),
+          content: `Arquivo ${start + 1}/${prepared.length} · ${detail}:`,
+          files: batch.map(attachmentFor),
         });
       }
     } catch (error) {
       await interaction.editReply({
         embeds: [
           embed.error(
-            'Baixei o arquivo, mas não consegui enviá-lo aqui. Verifique se tenho permissão para anexar arquivos e enviar mensagens.',
+            'Baixei a mídia, mas não consegui entregar todos os arquivos. ' +
+              'Confira se o bot pode anexar arquivos e enviar mensagens neste canal.',
           ),
         ],
       });
