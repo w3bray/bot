@@ -13,6 +13,7 @@ import { embed, replyError, truncate } from '../../lib/embeds.js';
 import { logger } from '../../lib/logger.js';
 import { ownerIds } from '../../lib/owner.js';
 import { shardLabel, totalGuilds, totalMembers } from '../../lib/shard.js';
+import { limparEscopoDeServidor } from '../../services/autodeploy.js';
 import { addBalance, formatMoney } from '../../services/economy.js';
 import { levelFromXp, xpForLevel } from '../../services/leveling.js';
 
@@ -57,9 +58,9 @@ export default {
             .setDescription('Onde registrar')
             .setRequired(true)
             .addChoices(
-              { name: 'Global — todos os servidores (até 1h para aparecer)', value: 'global' },
-              { name: 'Aqui — só este servidor (instantâneo)', value: 'aqui' },
-              { name: 'Limpar — remove os comandos deste servidor', value: 'limpar' },
+              { name: 'Global — registra em todos os servidores', value: 'global' },
+              { name: 'Diagnóstico — mostra o que está registrado onde', value: 'diagnostico' },
+              { name: 'Limpar duplicatas — varre todos os servidores', value: 'limpar' },
             ),
         ),
     )
@@ -198,36 +199,101 @@ async function leaveGuild(interaction, client) {
   }
 }
 
+/**
+ * Não existe mais a opção de registrar no escopo de servidor.
+ *
+ * Era o último caminho capaz de criar a duplicata: um conjunto no servidor
+ * convivendo com o global faz o Discord listar cada comando duas vezes. Como
+ * não há uso legítimo disso com AUTO_DEPLOY ligado, a opção saiu em vez de
+ * ganhar um aviso que alguém ignoraria.
+ */
 async function deploy(interaction, client) {
   const scope = interaction.options.getString('escopo');
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+  const rest = new REST().setToken(config.token);
 
-  if (scope !== 'global' && !interaction.inGuild()) {
-    return replyError(interaction, 'Esse escopo só funciona dentro de um servidor.');
+  if (scope === 'diagnostico') return diagnostico(interaction, client, rest);
+
+  if (scope === 'limpar') {
+    const resumo = await limparEscopoDeServidor(client, rest, { forcar: true });
+    return interaction.editReply({
+      embeds: [
+        embed.success(
+          [
+            `Varri **${resumo.verificados}** servidor(es).`,
+            `Limpei **${resumo.limpos}** que tinham comandos no escopo de servidor.`,
+            resumo.falhas > 0 ? `**${resumo.falhas}** falharam — veja os logs.` : null,
+            '',
+            'Feche e reabra o Discord: ele guarda a lista de comandos em cache.',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        ),
+      ],
+    });
   }
 
-  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-  const body = scope === 'limpar' ? [] : client.commands.map((command) => command.data.toJSON());
-  const route =
-    scope === 'global'
-      ? Routes.applicationCommands(config.clientId)
-      : Routes.applicationGuildCommands(config.clientId, interaction.guildId);
-
+  const body = client.commands.map((command) => command.data.toJSON());
   try {
-    const rest = new REST().setToken(config.token);
-    const result = await rest.put(route, { body });
-
-    const description =
-      scope === 'global'
-        ? `**${result.length}** comandos registrados globalmente. Podem levar até **1 hora** para aparecer em todos os servidores.`
-        : scope === 'limpar'
-          ? 'Comandos deste servidor removidos. Os globais continuam valendo.'
-          : `**${result.length}** comandos registrados neste servidor. Já estão valendo.`;
-
-    await interaction.editReply({ embeds: [embed.success(description)] });
+    const result = await rest.put(Routes.applicationCommands(config.clientId), { body });
+    await interaction.editReply({
+      embeds: [
+        embed.success(
+          `**${result.length}** comandos registrados globalmente — valem em todos os servidores.\n\n` +
+            'Mudanças podem levar até **1 hora** para propagar.',
+        ),
+      ],
+    });
   } catch (error) {
     await replyError(interaction, `Falha ao registrar: ${error.message}`);
   }
+}
+
+/** Mostra exatamente o que está registrado no global e em cada servidor. */
+async function diagnostico(interaction, client, rest) {
+  const global = await rest
+    .get(Routes.applicationCommands(config.clientId))
+    .catch(() => null);
+
+  const linhas = [];
+  let duplicando = 0;
+
+  for (const guild of [...client.guilds.cache.values()].slice(0, 20)) {
+    const doServidor = await rest
+      .get(Routes.applicationGuildCommands(config.clientId, guild.id))
+      .catch(() => null);
+
+    if (doServidor === null) {
+      linhas.push(`⚠️ **${guild.name}** — não consegui ler`);
+      continue;
+    }
+    if (doServidor.length === 0) {
+      linhas.push(`✅ **${guild.name}** — nenhum, correto`);
+      continue;
+    }
+    duplicando += 1;
+    linhas.push(`❌ **${guild.name}** — ${doServidor.length} no escopo do servidor`);
+  }
+
+  await interaction.editReply({
+    embeds: [
+      embed
+        .base(duplicando > 0 ? colors.danger : colors.success)
+        .setTitle('Onde os comandos estão registrados')
+        .setDescription(
+          [
+            `**Global:** ${global === null ? 'não consegui ler' : `${global.length} comandos`}`,
+            '',
+            '**Por servidor** (só o global deveria existir):',
+            ...linhas,
+            '',
+            duplicando > 0
+              ? `**${duplicando} servidor(es) duplicando.** Rode \`/dono deploy escopo:Limpar duplicatas\`.`
+              : 'Nenhuma duplicata. Se a lista ainda repete no seu Discord, é cache — feche e reabra o app.',
+          ].join('\n'),
+        ),
+    ],
+  });
 }
 
 async function giveCoins(interaction) {

@@ -1,27 +1,27 @@
 import { REST, Routes } from 'discord.js';
 import { config } from '../config.js';
+import { db } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
+
+const jaVarrido = db.prepare('SELECT 1 FROM limpezas WHERE guild_id = ?');
+const marcarVarrido = db.prepare(
+  'INSERT OR REPLACE INTO limpezas (guild_id, quando) VALUES (?, ?)',
+);
 
 /**
  * Registra os slash commands ao iniciar, quando AUTO_DEPLOY=true.
  *
- * Existe para quem hospeda em serviços onde não dá para abrir um terminal e
- * rodar `npm run deploy` à mão. Com sharding, apenas o shard 0 registra: os
- * comandos são globais para a aplicação, então registrar uma vez por shard só
- * gastaria requisições e arriscaria rate limit.
- *
- * SOMENTE global, e por um motivo aprendido errando: comandos de servidor e
- * comandos globais são dois registros independentes, e o Discord mostra OS
- * DOIS na lista. Registrar o mesmo conjunto nos dois escopos faz cada comando
+ * SOMENTE no escopo global, e por um motivo aprendido errando: comandos de
+ * servidor e comandos globais são dois registros independentes, e o Discord
+ * mostra OS DOIS na lista. O mesmo conjunto nos dois escopos faz cada comando
  * aparecer duplicado quando a pessoa digita "/".
  *
- * O global cobre todos os servidores, inclusive os que o bot entrar depois —
- * ele pertence à aplicação, não ao servidor. A espera de até uma hora vale
- * para a propagação de mudanças no conjunto, não para servidores novos.
+ * O global pertence à aplicação, não ao servidor, então vale em todo servidor
+ * onde o bot está e nos que ele entrar depois. A espera de até uma hora é para
+ * a propagação de MUDANÇAS no conjunto, não para servidores novos.
  *
- * Para desenvolver com registro instantâneo, use `npm run deploy` com GUILD_ID
- * preenchido e AUTO_DEPLOY desligado — aí o escopo de servidor é intencional e
- * o global não existe para duplicar.
+ * Com sharding, apenas o shard 0 registra: o conjunto é da aplicação inteira,
+ * então repetir por shard só gastaria requisições e arriscaria rate limit.
  */
 export async function maybeDeployCommands(client) {
   if (!config.autoDeploy) return;
@@ -40,34 +40,59 @@ export async function maybeDeployCommands(client) {
     );
   }
 
-  await limparDuplicatas(client, rest);
+  await limparEscopoDeServidor(client, rest);
 }
 
 /**
- * Apaga registros de servidor deixados por versões anteriores.
+ * Apaga registros no escopo de servidor, que é o que produz a duplicata.
  *
- * Até a correção, o bot registrava o mesmo conjunto no global E no servidor, o
- * que duplicava tudo na lista. Quem já rodou aquela versão tem os registros de
- * servidor gravados no Discord, e eles não somem sozinhos: precisam ser
- * apagados uma vez. Depois disso o laço não encontra mais nada para fazer.
+ * Versões anteriores gravavam o conjunto no global E no servidor. Esses
+ * registros ficam guardados no Discord e não somem sozinhos: precisam ser
+ * apagados uma vez, por servidor.
+ *
+ * O resultado de cada servidor é gravado em `limpezas`, então a varredura só
+ * acontece uma vez na vida de cada um. Sem isso seria uma requisição por
+ * servidor a cada inicialização — aceitável com dois servidores, inviável com
+ * muitos, que é justamente o cenário para o qual o bot foi feito.
  */
-async function limparDuplicatas(client, rest) {
+export async function limparEscopoDeServidor(client, rest, { forcar = false } = {}) {
+  const resumo = { verificados: 0, limpos: 0, falhas: 0 };
+
   for (const guild of client.guilds.cache.values()) {
+    if (!forcar && jaVarrido.get(guild.id)) continue;
+    resumo.verificados += 1;
+
     try {
       const existentes = await rest.get(
         Routes.applicationGuildCommands(config.clientId, guild.id),
       );
-      if (existentes.length === 0) continue;
 
-      await rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body: [] });
-      logger.info(
-        `AUTO_DEPLOY: removi ${existentes.length} registro(s) de servidor em "${guild.name}" ` +
-          'que estavam duplicando a lista de comandos.',
-      );
+      if (existentes.length > 0) {
+        await rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body: [] });
+        resumo.limpos += 1;
+        logger.info(
+          `AUTO_DEPLOY: removi ${existentes.length} comando(s) do escopo de "${guild.name}" — ` +
+            'eram eles que apareciam duplicados.',
+        );
+      }
+
+      // Marcado mesmo quando não havia nada: o que importa é não varrer de novo.
+      marcarVarrido.run(guild.id, Date.now());
     } catch (error) {
-      logger.warn(`AUTO_DEPLOY: não consegui limpar os comandos de "${guild.name}":`, error.message);
+      // Sem marca, este servidor é tentado na próxima inicialização.
+      resumo.falhas += 1;
+      logger.warn(`AUTO_DEPLOY: não consegui varrer "${guild.name}":`, error.message);
     }
   }
+
+  if (resumo.verificados > 0) {
+    logger.info(
+      `AUTO_DEPLOY: varredura de duplicatas — ${resumo.verificados} servidor(es) verificado(s), ` +
+        `${resumo.limpos} limpo(s), ${resumo.falhas} falha(s).`,
+    );
+  }
+
+  return resumo;
 }
 
 /**
