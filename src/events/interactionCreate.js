@@ -29,6 +29,11 @@ async function runCommand(interaction, client) {
   const owner = isOwner(interaction.user.id);
 
   if (command.ownerOnly && !owner) {
+    // Registrado para que o dono consiga ver, nos logs, quem andou tentando.
+    logger.warn(
+      `Acesso negado: ${interaction.user.tag} (${interaction.user.id}) tentou /${interaction.commandName}` +
+        `${interaction.guild ? ` em ${interaction.guild.name} (${interaction.guildId})` : ' na DM'}.`,
+    );
     return replyError(interaction, 'Apenas os donos do bot podem usar este comando.');
   }
 
@@ -58,6 +63,13 @@ async function runCommand(interaction, client) {
 async function runAutocomplete(interaction, client) {
   const command = client.commands.get(interaction.commandName);
   if (typeof command?.autocomplete !== 'function') return;
+
+  // O autocomplete é uma porta de entrada separada do execute: sem esta
+  // checagem, um comando de dono que tivesse autocomplete devolveria sugestões
+  // a qualquer pessoa, vazando dados sem nunca passar pelo gate do execute.
+  if (command.ownerOnly && !isOwner(interaction.user.id)) {
+    return interaction.respond([]).catch(() => null);
+  }
 
   try {
     await command.autocomplete(interaction, client);

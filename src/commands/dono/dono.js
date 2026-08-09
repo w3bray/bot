@@ -26,6 +26,10 @@ export default {
   data: new SlashCommandBuilder()
     .setName('dono')
     .setDescription('Painel de controle do dono do bot.')
+    // Some do menu de comandos de quem não é administrador do servidor. Não é a
+    // trava — a trava é o ownerOnly, verificado no servidor a cada uso — mas
+    // evita que o comando fique à vista de todo mundo convidando a tentativa.
+    .setDefaultMemberPermissions(0n)
     .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM)
     .addSubcommand((sub) =>
       sub
