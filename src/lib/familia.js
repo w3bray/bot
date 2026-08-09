@@ -155,61 +155,92 @@ export function familia({
   name,
   description,
   subs,
+  atalhos = [],
   cooldown = 3,
   cor = colors.primary,
   dm = true,
 }) {
   valida(name, subs);
 
-  const data = new SlashCommandBuilder().setName(name).setDescription(description);
+  for (const nome of atalhos) {
+    if (!subs.some((sub) => sub.name === nome)) {
+      throw new Error(`/${name}: atalho "${nome}" não corresponde a nenhum subcomando.`);
+    }
+  }
 
-  for (const sub of subs) {
+  // Um subcomando promovido a comando de topo SAI da família. Manter os dois
+  // criaria dois caminhos para a mesma coisa — o mesmo trabalho aparecendo
+  // duas vezes na lista de comandos e contando duas vezes no total.
+  const promovidos = subs.filter((sub) => atalhos.includes(sub.name));
+  const restantes = subs.filter((sub) => !atalhos.includes(sub.name));
+
+  const contextos = dm
+    ? [InteractionContextType.Guild, InteractionContextType.BotDM]
+    : [InteractionContextType.Guild];
+
+  const data = new SlashCommandBuilder().setName(name).setDescription(description);
+  for (const sub of restantes) {
     data.addSubcommand((builder) => {
       builder.setName(sub.name).setDescription(sub.description);
       for (const o of sub.options ?? []) ADICIONA[o.kind](builder, o);
       return builder;
     });
   }
+  data.setContexts(...contextos);
 
-  data.setContexts(
-    ...(dm
-      ? [InteractionContextType.Guild, InteractionContextType.BotDM]
-      : [InteractionContextType.Guild]),
-  );
-
-  const porNome = new Map(subs.map((sub) => [sub.name, sub]));
+  const porNome = new Map(restantes.map((sub) => [sub.name, sub]));
 
   return {
     cooldown,
     guildOnly: !dm,
     data,
+    // O loader registra estes como comandos independentes.
+    atalhos: promovidos.map((sub) => solo(sub, { cooldown, cor, contextos, dm })),
 
     async execute(interaction, client) {
       const sub = porNome.get(interaction.options.getSubcommand());
       if (!sub) return replyError(interaction, 'Esse subcomando não existe mais.');
-
-      const valores = {};
-      for (const o of sub.options ?? []) valores[o.name] = LE[o.kind](interaction.options, o.name);
-
-      let resultado;
-      try {
-        resultado = await sub.run(valores, interaction, client);
-      } catch (error) {
-        // Erros de uso (divisão por zero, número fora de faixa) viram aviso
-        // legível; o resto sobe para o handler global, que já loga.
-        if (error?.usuario) return replyError(interaction, error.message);
-        throw error;
-      }
-
-      if (resultado === null || resultado === undefined) return;
-      if (typeof resultado === 'string') {
-        return interaction.reply({
-          embeds: [embed.base(cor).setDescription(truncate(resultado, 4096))],
-        });
-      }
-      return interaction.reply(resultado);
+      return despachar(sub, interaction, client, cor);
     },
   };
+}
+
+/** Constrói um comando de topo a partir da mesma especificação de subcomando. */
+function solo(sub, { cooldown, cor, contextos, dm }) {
+  const data = new SlashCommandBuilder().setName(sub.name).setDescription(sub.description);
+  for (const o of sub.options ?? []) ADICIONA[o.kind](data, o);
+  data.setContexts(...contextos);
+
+  return {
+    cooldown,
+    guildOnly: !dm,
+    data,
+    execute: (interaction, client) => despachar(sub, interaction, client, cor),
+  };
+}
+
+/** Lê as opções, roda o handler e transforma o retorno em resposta. */
+async function despachar(sub, interaction, client, cor) {
+  const valores = {};
+  for (const o of sub.options ?? []) valores[o.name] = LE[o.kind](interaction.options, o.name);
+
+  let resultado;
+  try {
+    resultado = await sub.run(valores, interaction, client);
+  } catch (error) {
+    // Erros de uso (divisão por zero, número fora de faixa) viram aviso
+    // legível; o resto sobe para o handler global, que já loga.
+    if (error?.usuario) return replyError(interaction, error.message);
+    throw error;
+  }
+
+  if (resultado === null || resultado === undefined) return undefined;
+  if (typeof resultado === 'string') {
+    return interaction.reply({
+      embeds: [embed.base(cor).setDescription(truncate(resultado, 4096))],
+    });
+  }
+  return interaction.reply(resultado);
 }
 
 /** Erro que o usuário causou — vira aviso em vez de "algo deu errado". */

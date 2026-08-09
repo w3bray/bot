@@ -58,6 +58,8 @@ const APOSTA = opt.inteiro('valor', 'Quanto apostar', true, { min: 1, max: 1_000
 
 export default familia({
   name: 'bolso',
+  // Promovidos a comando de topo: saem da família e viram /nome direto.
+  atalhos: ['minerar', 'pescar', 'cacar', 'plantar', 'crime', 'mendigar', 'reciclar', 'programar', 'transmitir'],
   description: 'Trabalhos, apostas, investimentos e o que fazer com o seu dinheiro.',
   cooldown: 2,
   dm: false,

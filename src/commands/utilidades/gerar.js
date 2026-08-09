@@ -21,6 +21,8 @@ const SILABAS = ['ka', 'ro', 'mi', 'ta', 'zen', 'lu', 'vor', 'nix', 'ara', 'del'
 
 export default familia({
   name: 'gerar',
+  // Promovidos a comando de topo: saem da família e viram /nome direto.
+  atalhos: ['senha', 'uuid'],
   description: 'Gera senhas, identificadores, cores, textos e nomes.',
   cooldown: 3,
   subs: [

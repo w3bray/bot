@@ -92,6 +92,8 @@ const FORCA = [
 
 export default familia({
   name: 'jogo',
+  // Promovidos a comando de topo: saem da família e viram /nome direto.
+  atalhos: ['enigma', 'anagrama', 'curiosidade'],
   description: 'Passatempos: enigmas, anagramas, quiz, desafios e curiosidades.',
   cooldown: 3,
   subs: [

@@ -30,6 +30,8 @@ const CARTAS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
 
 export default familia({
   name: 'aleatorio',
+  // Promovidos a comando de topo: saem da família e viram /nome direto.
+  atalhos: ['moeda', 'roleta', 'carta'],
   description: 'Sorteios, dados, cartas e escolhas ao acaso.',
   cooldown: 3,
   subs: [
