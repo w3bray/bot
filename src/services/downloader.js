@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process';
-import { createWriteStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -26,7 +26,10 @@ export const MAX_DURATION_SECONDS = 15 * 60;
 const METADATA_TIMEOUT = 25_000;
 const DOWNLOAD_TIMEOUT = 180_000;
 const FFMPEG_TIMEOUT = 90_000;
+const SEGMENT_TIMEOUT = 180_000;
 const MAX_CONCURRENT = 2;
+const MIN_DISK_RESERVE_BYTES = 512 * 1024 * 1024;
+const MAX_MESSAGE_PAYLOAD_BYTES = 24 * 1024 * 1024;
 const TIKWM_API = 'https://www.tikwm.com/api/';
 const TIKWM_CACHE_TTL = 5 * 60_000;
 const HTTP_USER_AGENT =
@@ -162,7 +165,7 @@ function friendlyError(stderr) {
   }
   if (text.includes('age')) return 'Esse vídeo tem restrição de idade.';
   if (text.includes('file is larger') || text.includes('max-filesize')) {
-    return 'O vídeo é grande demais para o limite de upload deste servidor.';
+    return 'O arquivo é maior que o espaço temporário disponível na VPS.';
   }
   if (text.includes('geo')) return 'Esse vídeo está bloqueado na região do servidor.';
 
@@ -472,6 +475,12 @@ export async function download(url, { maxBytes, audioOnly = false }) {
     throw new Error('Já estou baixando outros vídeos agora. Tente de novo em instantes.');
   }
 
+  // Não existe teto artificial de download. Reservamos apenas 512 MiB para o
+  // sistema operacional, evitando que um arquivo ocupe 100% do disco da VPS.
+  const diskLimit = await availableDownloadLimit();
+  const requestedLimit = Number.isFinite(maxBytes) && maxBytes > 0 ? maxBytes : Infinity;
+  const effectiveMaxBytes = Math.min(requestedLimit, diskLimit);
+
   running += 1;
   let directory;
   try {
@@ -492,7 +501,10 @@ export async function download(url, { maxBytes, audioOnly = false }) {
   try {
     const cached = isTikTokUrl(url) ? cachedTikwm(url) : null;
     if (cached) {
-      const result = await downloadTikwm(cached, directory, { maxBytes, audioOnly });
+      const result = await downloadTikwm(cached, directory, {
+        maxBytes: effectiveMaxBytes,
+        audioOnly,
+      });
       return { ...result, cleanup };
     }
 
@@ -502,9 +514,9 @@ export async function download(url, { maxBytes, audioOnly = false }) {
       '--no-progress',
       '--no-continue',
       '--max-filesize',
-      String(maxBytes),
+      String(effectiveMaxBytes),
       '-f',
-      formatSelector(maxBytes, audioOnly),
+      formatSelector(effectiveMaxBytes, audioOnly),
       '-o',
       path.join(directory, 'video.%(ext)s'),
     ];
@@ -521,7 +533,10 @@ export async function download(url, { maxBytes, audioOnly = false }) {
 
       logger.warn('O download do TikTok pelo yt-dlp falhou; usando o extrator reserva.');
       const data = await fetchTikwm(url);
-      const result = await downloadTikwm(data, directory, { maxBytes, audioOnly });
+      const result = await downloadTikwm(data, directory, {
+        maxBytes: effectiveMaxBytes,
+        audioOnly,
+      });
       return { ...result, cleanup };
     }
 
@@ -531,8 +546,8 @@ export async function download(url, { maxBytes, audioOnly = false }) {
     const file = path.join(directory, files[0]);
     const { size } = await fs.stat(file);
 
-    if (size > maxBytes) {
-      throw new Error('O arquivo ficou maior que o limite de upload deste servidor.');
+    if (size > effectiveMaxBytes) {
+      throw new Error('O arquivo ficou maior que o espaço temporário disponível na VPS.');
     }
 
     return { file, size, cleanup };
@@ -542,9 +557,160 @@ export async function download(url, { maxBytes, audioOnly = false }) {
   }
 }
 
-/** Limite de upload do servidor, conforme o nível de impulso. */
-export function uploadLimitFor(guild) {
+async function availableDownloadLimit() {
+  try {
+    const stats = await fs.statfs(os.tmpdir());
+    const freeBytes = Number(stats.bavail) * Number(stats.bsize);
+    const available = freeBytes - MIN_DISK_RESERVE_BYTES;
+    if (available < 20 * 1024 * 1024) {
+      throw new Error('A VPS está sem espaço livre suficiente para fazer este download.');
+    }
+    return available;
+  } catch (error) {
+    if (error.message.includes('sem espaço livre')) throw error;
+    logger.warn('Não consegui medir o espaço livre da VPS; usando teto de segurança de 1 GiB.');
+    return 1024 * 1024 * 1024;
+  }
+}
+
+function runSegmenter(args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    let stderr = '';
+    let finished = false;
+
+    const timer = setTimeout(() => {
+      finished = true;
+      child.kill('SIGKILL');
+      reject(new Error('A divisão do arquivo demorou demais e foi cancelada.'));
+    }, SEGMENT_TIMEOUT);
+
+    child.stderr.on('data', (chunk) => {
+      if (stderr.length < 200_000) stderr += chunk;
+    });
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      if (finished) return;
+      finished = true;
+      reject(new Error(`Não consegui dividir o arquivo: ${error.message}`));
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (finished) return;
+      finished = true;
+      if (code === 0) resolve();
+      else {
+        logger.debug('Erro bruto do segmentador ffmpeg:', stderr.slice(0, 800));
+        reject(new Error('Não consegui dividir este arquivo como mídia reproduzível.'));
+      }
+    });
+  });
+}
+
+async function generatedParts(directory) {
+  const names = (await fs.readdir(directory))
+    .filter((name) => name.startsWith('discord-part-'))
+    .sort();
+  return names.map((name) => path.join(directory, name));
+}
+
+async function clearGeneratedParts(directory) {
+  const parts = await generatedParts(directory);
+  await Promise.all(parts.map((file) => fs.rm(file, { force: true })));
+}
+
+async function splitBinary(file, maxBytes) {
+  const directory = path.dirname(file);
+  await clearGeneratedParts(directory);
+
+  const { size } = await fs.stat(file);
+  const chunkSize = Math.max(1, Math.floor(maxBytes * 0.95));
+  const count = Math.ceil(size / chunkSize);
+  const width = Math.max(3, String(count).length);
+  const parts = [];
+
+  for (let index = 0, start = 0; start < size; index += 1, start += chunkSize) {
+    const end = Math.min(size - 1, start + chunkSize - 1);
+    const output = path.join(
+      directory,
+      `discord-part-${String(index + 1).padStart(width, '0')}.bin`,
+    );
+    await pipeline(createReadStream(file, { start, end }), createWriteStream(output));
+    parts.push(output);
+  }
+
+  return { parts, playable: false };
+}
+
+/**
+ * Divide arquivos acima do teto obrigatório do Discord.
+ * Primeiro tenta gerar partes de mídia reproduzíveis; se o contêiner/codecs não
+ * permitirem, produz partes binárias que podem ser concatenadas sem perda.
+ */
+export async function splitForUpload(file, { maxBytes, duration, audioOnly = false }) {
+  const { size } = await fs.stat(file);
+  if (size <= maxBytes) return { parts: [file], playable: true };
+  if (!ffmpegAvailable || !duration || duration <= 0) return splitBinary(file, maxBytes);
+
+  const directory = path.dirname(file);
+  const extension = audioOnly ? 'mp3' : 'mp4';
+  const targetBytes = Math.floor(maxBytes * 0.82);
+  const estimatedParts = Math.max(2, Math.ceil(size / targetBytes));
+  let segmentTime = Math.max(0.5, (duration / estimatedParts) * 0.82);
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    await clearGeneratedParts(directory);
+    const pattern = path.join(directory, `discord-part-%03d.${extension}`);
+
+    try {
+      await runSegmenter([
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-y',
+        '-i',
+        file,
+        '-map',
+        '0:v?',
+        '-map',
+        '0:a?',
+        '-c',
+        'copy',
+        '-f',
+        'segment',
+        '-segment_time',
+        String(segmentTime),
+        '-reset_timestamps',
+        '1',
+        pattern,
+      ]);
+    } catch {
+      break;
+    }
+
+    const parts = await generatedParts(directory);
+    if (parts.length === 0) break;
+
+    const sizes = await Promise.all(parts.map(async (part) => (await fs.stat(part)).size));
+    const largest = Math.max(...sizes);
+    if (largest <= maxBytes) return { parts, playable: true };
+
+    const reduction = Math.max(0.2, Math.min(0.75, (maxBytes / largest) * 0.75));
+    segmentTime = Math.max(0.1, segmentTime * reduction);
+  }
+
+  return splitBinary(file, maxBytes);
+}
+
+/** Limite real calculado pelo Discord para esta interação. */
+export function uploadLimitFor(interactionOrGuild) {
+  const interactionLimit = Number(interactionOrGuild?.attachmentSizeLimit);
+  if (Number.isFinite(interactionLimit) && interactionLimit > 0) {
+    return Math.min(interactionLimit, MAX_MESSAGE_PAYLOAD_BYTES);
+  }
+
+  const guild = interactionOrGuild?.guild ?? interactionOrGuild;
   const byTier = { 0: 10, 1: 10, 2: 50, 3: 100 };
   const megabytes = byTier[guild?.premiumTier ?? 0] ?? 10;
-  return megabytes * 1024 * 1024;
+  return Math.min(megabytes * 1024 * 1024, MAX_MESSAGE_PAYLOAD_BYTES);
 }
