@@ -8,16 +8,17 @@ const CATEGORIES = {
   automod: { label: '🤖 AutoMod', order: 2 },
   configuracao: { label: '⚙️ Configuração', order: 3 },
   servidor: { label: '🏗️ Servidor', order: 4 },
-  utilidades: { label: '🔧 Utilidades', order: 5 },
-  social: { label: '💞 Social', order: 6 },
-  niveis: { label: '📈 Níveis', order: 7 },
-  economia: { label: '🪙 Economia', order: 8 },
-  jogos: { label: '🎮 Jogos', order: 9 },
-  diversao: { label: '🎲 Diversão', order: 10 },
-  sorteios: { label: '🎉 Sorteios', order: 11 },
-  tickets: { label: '🎫 Tickets', order: 12 },
-  ia: { label: '🧠 Inteligência Artificial', order: 13 },
-  dono: { label: '👑 Dono do bot', order: 14 },
+  texto: { label: '✍️ Texto e código', order: 5 },
+  utilidades: { label: '🔧 Utilidades', order: 6 },
+  social: { label: '💞 Social', order: 7 },
+  niveis: { label: '📈 Níveis', order: 8 },
+  economia: { label: '🪙 Economia', order: 9 },
+  jogos: { label: '🎮 Jogos', order: 10 },
+  diversao: { label: '🎲 Diversão', order: 11 },
+  sorteios: { label: '🎉 Sorteios', order: 12 },
+  tickets: { label: '🎫 Tickets', order: 13 },
+  ia: { label: '🧠 Inteligência Artificial', order: 14 },
+  dono: { label: '👑 Dono do bot', order: 15 },
 };
 
 export default {
@@ -112,12 +113,31 @@ async function showCommand(interaction, client, name) {
   const plainOptions = (json.options ?? []).filter((option) => option.type > 2);
 
   if (subcommands.length > 0) {
-    detail.addFields({
-      name: 'Subcomandos',
-      value: subcommands
-        .map((sub) => `\`/${json.name} ${sub.name}\` — ${sub.description}`)
-        .join('\n'),
-    });
+    // Um campo de embed aceita 1024 caracteres. Com 25 subcomandos descritos a
+    // lista passa disso e o Discord recusa a mensagem inteira, então quebramos
+    // em quantos campos forem necessários.
+    const linhas = subcommands.map((sub) => `\`/${json.name} ${sub.name}\` — ${sub.description}`);
+    let parte = [];
+    let tamanho = 0;
+    let indice = 0;
+
+    const despejar = () => {
+      if (parte.length === 0) return;
+      indice += 1;
+      detail.addFields({
+        name: indice === 1 ? `Subcomandos (${subcommands.length})` : '​',
+        value: parte.join('\n'),
+      });
+      parte = [];
+      tamanho = 0;
+    };
+
+    for (const linha of linhas) {
+      if (tamanho + linha.length + 1 > 1024) despejar();
+      parte.push(linha);
+      tamanho += linha.length + 1;
+    }
+    despejar();
   }
 
   for (const group of groups) {

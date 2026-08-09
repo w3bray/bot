@@ -4,7 +4,8 @@ Bot completo em **Node.js + discord.js v14**, com moderação, AutoMod, níveis,
 perfis sociais, tickets, sorteios, enquetes, jogos, logs, starboard, painel de cargos,
 download de vídeos, construtor de servidor e um comando de IA.
 
-Tudo em português do Brasil, com **55 slash commands**, persistência em SQLite e
+Tudo em português do Brasil, com **400 comandos** distribuídos em **68 comandos de barra**,
+persistência em SQLite e
 carregamento automático de comandos, eventos e botões.
 
 ---
@@ -228,6 +229,55 @@ adiciona ao que já existe.
 Exige **Gerenciar Servidor** de quem usa e **Gerenciar Canais** do bot (mais
 **Gerenciar Cargos**, se for criar os cargos).
 
+### ✍️ Texto e código
+
+| Comando | Subcomandos | O que faz |
+|---|---|---|
+| `/texto` | 25 | Caixa, ordem, limpeza, contagem, frequência de letras, efeitos |
+| `/codigo` | 20 | Base64, hex, binário, Morse, César, MD5/SHA, Unicode, JSON, timestamp |
+
+### 🔧 Mais utilidades
+
+| Comando | Subcomandos | O que faz |
+|---|---|---|
+| `/converter` | 25 | 13 famílias de unidades, bases numéricas, romanos, número por extenso |
+| `/matematica` | 21 | Expressões, estatística, primos, fatoração, juros, combinatória |
+| `/gerar` | 20 | Senhas, UUID, cores, paletas, gradientes, lorem, tabelas, barras |
+| `/tempo` | 18 | Fusos, contagens, idade, dias úteis, progresso do ano, timestamps |
+
+O avaliador de expressões do `/matematica calcular` é escrito à mão, sem `eval`: só
+números e os operadores `+ - * / % ^ ( )` são reconhecidos. Uma string vinda do Discord
+nunca chega perto do interpretador.
+
+### 🎲 Mais diversão e jogos
+
+| Comando | Subcomandos | O que faz |
+|---|---|---|
+| `/aleatorio` | 25 | Sorteios, dados `NdL`, cartas, times, roleta — tudo com `crypto.randomInt` |
+| `/brincadeira` | 25 | Medidores, ações entre membros, previsões, rankings |
+| `/jogo` | 25 | Anagramas, enigmas, sequências, quiz — resposta em spoiler |
+
+Os jogos não guardam estado: a resposta vai escondida num `||spoiler||`, então cada
+partida cabe numa mensagem só, sem tabela, expiração nem limpeza.
+
+### 🪙 Mais economia e área pessoal
+
+| Comando | Subcomandos | O que faz |
+|---|---|---|
+| `/bolso` | 25 | Trabalhos, crime, apostas, caça-níquel, investimentos, ranking |
+| `/pessoal` | 25 | Anotações, tarefas, metas, guardados e aniversários — sempre privados |
+
+Os cooldowns do `/bolso` ficam na tabela `acoes`, não em memória: com cooldown em
+memória bastaria esperar o bot reiniciar para repetir a ação.
+
+### 🏗️ Servidor
+
+| Comando | Subcomandos | O que faz |
+|---|---|---|
+| `/construir` | — | Monta o servidor a partir de um modelo pronto |
+| `/servidor` | 25 | Resumo, cargos, canais, emojis, impulsos, banidos, permissões |
+| `/mod` | 25 | Trancar canais, limpezas filtradas, cargos em massa, auditoria |
+
 ### 👑 Dono do bot
 
 Só aparece e só funciona para o dono da aplicação. Não precisa configurar nada: o bot
@@ -293,6 +343,22 @@ remover a duplicata.
 
 > O ID do servidor **nunca** foi obrigatório para o bot entrar num servidor — ele serve
 > apenas para o registro instantâneo dos comandos durante o desenvolvimento.
+
+---
+
+## Por que 400 comandos e não 400 barras
+
+O Discord aceita no **máximo 100 comandos de barra por aplicação**. Não é limitação do
+bot: passar disso faz o registro inteiro ser recusado.
+
+Por isso os 400 comandos vivem em **68 comandos de topo**, agrupados em subcomandos —
+`/texto maiusculas`, `/texto inverter`, e assim por diante. Cada comando de topo comporta
+até 25 subcomandos, e o autocomplete do Discord ajuda a achar o que você quer.
+
+As famílias grandes são declaradas como tabela em `src/lib/familia.js`, não com o builder
+na mão. O helper valida na carga o que o Discord validaria só no deploy — nome duplicado,
+descrição acima de 100 caracteres, opção obrigatória depois de opcional — então um erro
+aparece no `npm start` em vez de derrubar o registro de todos os comandos.
 
 ---
 
