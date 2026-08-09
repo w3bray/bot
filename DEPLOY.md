@@ -20,7 +20,7 @@ dois caminhos, os dois controlados **pelo próprio celular**:
 
 | | Custo | Facilidade | Tudo funciona? |
 |---|---|---|---|
-| **[Opção A](#opção-a--vps-com-o-instalador-automático-recomendada)** — VPS | uns R$ 25/mês | 2 comandos | ✅ sim, incluindo `/baixar` |
+| **[Opção A](#opção-a--vps-com-o-instalador-automático-recomendada)** — VPS | a partir de uns R$ 25/mês | 2 comandos | ✅ sim, incluindo `/baixar` |
 | **[Opção B](#opção-b--hospedagem-gratuita-para-bots-sem-cartão-sem-terminal)** — painel grátis | R$ 0 | sem terminal, só cliques | ⚠️ sem `/baixar`, e precisa renovar |
 
 **Sem dinheiro? Vá direto para a Opção B.** Ela funciona, é a mais fácil de todas
@@ -35,11 +35,39 @@ imagem já traz `yt-dlp` e `ffmpeg` embutidos.
 
 ### 1. Alugue um VPS
 
-Qualquer provedor serve (Hetzner, DigitalOcean, Contabo, Vultr, Oracle Cloud…).
-Peça a máquina mais barata com **Ubuntu 24.04** — 1 GB de RAM sobra para este bot.
-Compare os preços atuais no site de cada um; eles mudam com frequência.
+> ⚠️ **Compre VPS, não "hospedagem de site".** As mesmas empresas vendem os dois,
+> e o produto errado **não roda bot nenhum**.
+>
+> | Produto | Roda o bot? |
+> |---|---|
+> | Hospedagem de sites / compartilhada / WordPress | ❌ Não. Só serve para site |
+> | **VPS** | ✅ Sim. É um Linux completo, com acesso root |
+>
+> Como saber que comprou o certo: você **escolhe o sistema** (Ubuntu 24.04) e
+> recebe **IP, usuário `root` e senha** para entrar por SSH. Se você cair num
+> painel com Gerenciador de Arquivos, WordPress e e-mail, e não houver senha de
+> root, é o produto errado — peça reembolso dentro do prazo de garantia.
+
+Peça a máquina **mais barata** com **Ubuntu 24.04**. Este bot usa cerca de 200 MB
+em operação, então **1 GB de RAM sobra** — não deixe vender máquina grande para
+você.
+
+**Escolhendo do Brasil**, o que costuma decidir é a forma de pagamento:
+
+| Você tem | Onde olhar |
+|---|---|
+| Só Pix ou boleto | Provedores nacionais como a **Hostinger** — painel em português e pagamento em reais. Procure a seção **VPS** do site, não a de hospedagem |
+| Cartão internacional | **Hetzner**, **Contabo**, **Vultr** — costumam sair mais baratos e vendem praticamente só VPS, então tem menos risco de clicar no produto errado. Cobram em euro ou dólar |
+
+> ⚠️ **A pegadinha do preço.** O valor baixo do anúncio quase sempre é para quem
+> paga **2 a 4 anos adiantado**. Escolhendo mês a mês, costuma dobrar ou
+> triplicar. Antes de fechar, olhe o **total da primeira cobrança**, não o preço
+> mensal da propaganda.
+
+Preços e planos mudam o tempo todo — confira no site antes de decidir.
 
 Ao final você recebe: um **IP**, um **usuário** (normalmente `root`) e uma **senha**.
+Diferente da Oracle, aqui não tem chave SSH nem formulário de rede.
 
 ### 2. Conecte pelo celular
 
