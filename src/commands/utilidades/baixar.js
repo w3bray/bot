@@ -7,9 +7,13 @@ import {
   download,
   isEnabled,
   probe,
+  splitForUpload,
   uploadLimitFor,
   validateUrl,
 } from '../../services/downloader.js';
+
+// Uma parte por mensagem mantém cada requisição abaixo do teto HTTP do Discord.
+const MAX_ATTACHMENTS_PER_MESSAGE = 1;
 
 export default {
   cooldown: 30,
@@ -44,7 +48,7 @@ export default {
     }
 
     const audioOnly = interaction.options.getBoolean('audio') ?? false;
-    const maxBytes = uploadLimitFor(interaction.guild);
+    const maxBytes = uploadLimitFor(interaction);
 
     await interaction.deferReply();
 
@@ -81,55 +85,113 @@ export default {
     // 2) Download propriamente dito.
     let result;
     try {
-      result = await download(url, { maxBytes, audioOnly });
+      // O download não usa o teto do Discord. Se o arquivo for maior, ele será
+      // dividido em partes abaixo do limite obrigatório de cada anexo.
+      result = await download(url, { audioOnly });
     } catch (error) {
       return interaction.editReply({
-        embeds: [
-          embed
-            .error(error.message)
-            .addFields({
-              name: 'Dica',
-              value: `Vídeos acima de ${Math.round(maxBytes / 1024 / 1024)} MB não cabem no upload deste servidor. Tente a opção \`audio: true\` ou um vídeo menor.`,
-            }),
-        ],
+        embeds: [embed.error(error.message)],
       });
     }
 
     try {
       const extension = audioOnly ? 'mp3' : 'mp4';
-      const name = `${info.title.replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 60).trim() || 'video'}.${extension}`;
+      const baseName =
+        info.title.replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 60).trim() || 'video';
+
+      if (result.size > maxBytes) {
+        await interaction.editReply({
+          embeds: [
+            embed.info(
+              `O arquivo tem ${(result.size / 1024 / 1024).toFixed(1)} MB. Dividindo em partes para enviar pelo Discord…`,
+            ),
+          ],
+        });
+      }
+
+      const delivery = await splitForUpload(result.file, {
+        maxBytes,
+        duration: info.duration,
+        audioOnly,
+      });
+      const totalParts = delivery.parts.length;
+
+      const resultEmbed = embed
+        .base(colors.success)
+        .setTitle(info.title.slice(0, 250))
+        .setURL(info.webpage)
+        .addFields(
+          { name: 'Fonte', value: info.extractor, inline: true },
+          {
+            name: 'Duração',
+            value: info.duration ? formatDuration(info.duration * 1000) : 'desconhecida',
+            inline: true,
+          },
+          {
+            name: 'Tamanho total',
+            value: `${(result.size / 1024 / 1024).toFixed(1)} MB`,
+            inline: true,
+          },
+          ...(info.uploader ? [{ name: 'Autor', value: info.uploader, inline: true }] : []),
+          ...(totalParts > 1
+            ? [
+                {
+                  name: 'Entrega',
+                  value: `${totalParts} partes de até ${(maxBytes / 1024 / 1024).toFixed(0)} MB cada.`,
+                  inline: true,
+                },
+              ]
+            : []),
+          ...(!delivery.playable
+            ? [
+                {
+                  name: 'Como remontar',
+                  value:
+                    `Baixe todas as partes e junte na ordem. No Linux/macOS: ` +
+                    `\`cat "${baseName}.${extension}.part"* > "${baseName}.${extension}"\`.`,
+                },
+              ]
+            : []),
+        )
+        .setFooter({
+          text: 'Respeite os direitos autorais e os termos de uso da plataforma de origem.',
+        });
+
+      const attachmentFor = (file, index) => {
+        if (totalParts === 1) {
+          return new AttachmentBuilder(file, { name: `${baseName}.${extension}` });
+        }
+
+        const number = String(index + 1).padStart(Math.max(3, String(totalParts).length), '0');
+        const name = delivery.playable
+          ? `${baseName}-parte-${number}.${extension}`
+          : `${baseName}.${extension}.part${number}`;
+        return new AttachmentBuilder(file, { name });
+      };
+
+      const firstBatch = delivery.parts.slice(0, MAX_ATTACHMENTS_PER_MESSAGE);
 
       await interaction.editReply({
-        embeds: [
-          embed
-            .base(colors.success)
-            .setTitle(info.title.slice(0, 250))
-            .setURL(info.webpage)
-            .addFields(
-              { name: 'Fonte', value: info.extractor, inline: true },
-              {
-                name: 'Duração',
-                value: info.duration ? formatDuration(info.duration * 1000) : 'desconhecida',
-                inline: true,
-              },
-              {
-                name: 'Tamanho',
-                value: `${(result.size / 1024 / 1024).toFixed(1)} MB`,
-                inline: true,
-              },
-              ...(info.uploader ? [{ name: 'Autor', value: info.uploader, inline: true }] : []),
-            )
-            .setFooter({
-              text: 'Respeite os direitos autorais e os termos de uso da plataforma de origem.',
-            }),
-        ],
-        files: [new AttachmentBuilder(result.file, { name })],
+        embeds: [resultEmbed],
+        files: firstBatch.map((file, index) => attachmentFor(file, index)),
       });
+
+      for (
+        let start = MAX_ATTACHMENTS_PER_MESSAGE;
+        start < totalParts;
+        start += MAX_ATTACHMENTS_PER_MESSAGE
+      ) {
+        const batch = delivery.parts.slice(start, start + MAX_ATTACHMENTS_PER_MESSAGE);
+        await interaction.followUp({
+          content: `Partes ${start + 1}–${start + batch.length} de ${totalParts}:`,
+          files: batch.map((file, offset) => attachmentFor(file, start + offset)),
+        });
+      }
     } catch (error) {
       await interaction.editReply({
         embeds: [
           embed.error(
-            'Baixei o arquivo, mas não consegui enviá-lo aqui. Verifique se tenho permissão para anexar arquivos.',
+            'Baixei o arquivo, mas não consegui enviá-lo aqui. Verifique se tenho permissão para anexar arquivos e enviar mensagens.',
           ),
         ],
       });
