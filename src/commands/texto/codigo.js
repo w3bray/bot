@@ -25,6 +25,8 @@ const rot = (texto, n) =>
 
 export default familia({
   name: 'codigo',
+  // Promovidos a comando de topo: saem da família e viram /nome direto.
+  atalhos: ['md5', 'sha256', 'rot13', 'unicode'],
   description: 'Codificar, decodificar, gerar hash e inspecionar texto.',
   cooldown: 3,
   subs: [

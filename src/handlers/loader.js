@@ -39,6 +39,17 @@ export async function loadCommands(client, directory) {
     // A categoria vem do nome da pasta que contém o arquivo.
     module.category = path.basename(path.dirname(file));
     client.commands.set(module.data.name, module);
+
+    // Uma família pode promover alguns subcomandos a comandos de topo. Eles
+    // saem da família e viram entradas próprias, herdando a categoria.
+    for (const atalho of module.atalhos ?? []) {
+      if (client.commands.has(atalho.data.name)) {
+        logger.warn(`Atalho /${atalho.data.name} colide com um comando existente — ignorado.`);
+        continue;
+      }
+      atalho.category = module.category;
+      client.commands.set(atalho.data.name, atalho);
+    }
   }
   logger.info(`${client.commands.size} comandos carregados.`);
 }

@@ -4,7 +4,8 @@ Bot completo em **Node.js + discord.js v14**, com moderação, AutoMod, níveis,
 perfis sociais, tickets, sorteios, enquetes, jogos, logs, starboard, painel de cargos,
 download de vídeos, construtor de servidor e um comando de IA.
 
-Tudo em português do Brasil, com **400 comandos** distribuídos em **68 comandos de barra**,
+Tudo em português do Brasil, com **400 comandos** em **100 comandos de barra** — o máximo
+que o Discord permite —,
 persistência em SQLite e
 carregamento automático de comandos, eventos e botões.
 
@@ -349,11 +350,20 @@ remover a duplicata.
 ## Por que 400 comandos e não 400 barras
 
 O Discord aceita no **máximo 100 comandos de barra por aplicação**. Não é limitação do
-bot: passar disso faz o registro inteiro ser recusado.
+bot: passar disso faz o registro inteiro ser recusado e o bot fica com **zero** comandos.
 
-Por isso os 400 comandos vivem em **68 comandos de topo**, agrupados em subcomandos —
-`/texto maiusculas`, `/texto inverter`, e assim por diante. Cada comando de topo comporta
-até 25 subcomandos, e o autocomplete do Discord ajuda a achar o que você quer.
+O projeto usa exatamente esse teto: **100 comandos de topo**, e os outros 300 vivem como
+subcomandos deles — `/texto maiusculas`, `/bolso apostar-moeda`. O autocomplete do Discord
+acha qualquer um pelo nome.
+
+Os mais usados são promovidos a comando próprio: uma família declara
+`atalhos: ['minerar', 'pescar']` e esses subcomandos **saem** dela para virar `/minerar` e
+`/pescar`. Saem mesmo — manter os dois caminhos faria o mesmo trabalho aparecer duas vezes
+na lista e contar duas vezes no total.
+
+> Existe um teto maior e pouco conhecido: além dos 100 globais, dá para registrar outros
+> 100 **específicos de um servidor**, chegando a 200 naquele servidor. Não usamos isso: os
+> comandos extras não funcionariam nos outros servidores.
 
 As famílias grandes são declaradas como tabela em `src/lib/familia.js`, não com o builder
 na mão. O helper valida na carga o que o Discord validaria só no deploy — nome duplicado,

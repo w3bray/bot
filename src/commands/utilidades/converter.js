@@ -178,6 +178,8 @@ function porExtenso(n) {
 
 export default familia({
   name: 'converter',
+  // Promovidos a comando de topo: saem da família e viram /nome direto.
+  atalhos: ['temperatura', 'distancia', 'peso', 'romano', 'extenso', 'dinheiro'],
   description: 'Converte unidades de medida, bases numéricas e formatos.',
   cooldown: 3,
   subs: [

@@ -29,6 +29,8 @@ const linhas = (texto) => texto.split(/\r?\n/);
 
 export default familia({
   name: 'texto',
+  // Promovidos a comando de topo: saem da família e viram /nome direto.
+  atalhos: ['maiusculas', 'minusculas', 'inverter', 'contar', 'emoji'],
   description: 'Transformações de texto: caixa, ordem, limpeza, contagem e efeitos.',
   cooldown: 3,
   subs: [
