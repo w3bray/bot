@@ -13,7 +13,7 @@ import { embed, replyError, truncate } from '../../lib/embeds.js';
 import { logger } from '../../lib/logger.js';
 import { ownerIds } from '../../lib/owner.js';
 import { shardLabel, totalGuilds, totalMembers } from '../../lib/shard.js';
-import { limparEscopoDeServidor } from '../../services/autodeploy.js';
+import { corpoDosComandos, limparEscopoDeServidor } from '../../services/autodeploy.js';
 import { addBalance, formatMoney } from '../../services/economy.js';
 import { levelFromXp, xpForLevel } from '../../services/leveling.js';
 
@@ -233,7 +233,7 @@ async function deploy(interaction, client) {
     });
   }
 
-  const body = client.commands.map((command) => command.data.toJSON());
+  const body = corpoDosComandos(client.commands);
   try {
     const result = await rest.put(Routes.applicationCommands(config.clientId), { body });
     await interaction.editReply({
