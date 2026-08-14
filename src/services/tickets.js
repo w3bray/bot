@@ -21,7 +21,7 @@ const selectOpenByUser = db.prepare(
   'SELECT * FROM tickets WHERE guild_id = ? AND user_id = ? AND open = 1',
 );
 
-/** Botões que aparecem dentro de um ticket aberto. */
+/** Botões que aparecem dentro de um atendimento aberto. */
 export function ticketControls() {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -42,7 +42,7 @@ export function getTicket(channelId) {
 }
 
 /**
- * Cria o canal do ticket com permissões só para o autor e a equipe.
+ * Cria o canal de atendimento com permissões só para o autor e a equipe.
  * Retorna { ok, channel } ou { ok: false, reason }.
  */
 export async function openTicket(guild, user, subject) {
@@ -51,7 +51,7 @@ export async function openTicket(guild, user, subject) {
   const existing = selectOpenByUser.get(guild.id, user.id);
   if (existing) {
     const channel = await guild.channels.fetch(existing.channel_id).catch(() => null);
-    if (channel) return { ok: false, reason: `Você já tem um ticket aberto: ${channel}` };
+    if (channel) return { ok: false, reason: `Você já tem um atendimento aberto: ${channel}` };
     // O canal foi apagado manualmente: libera o registro órfão.
     db.prepare('UPDATE tickets SET open = 0 WHERE channel_id = ?').run(existing.channel_id);
   }
@@ -93,10 +93,10 @@ export async function openTicket(guild, user, subject) {
   }
 
   const channel = await guild.channels.create({
-    name: `ticket-${String(number).padStart(4, '0')}`,
+    name: `atendimento-${String(number).padStart(4, '0')}`,
     type: ChannelType.GuildText,
     parent: settings.ticket_category ?? null,
-    topic: `Ticket de ${user.tag} (${user.id})`,
+    topic: `Atendimento de ${user.tag} (${user.id})`,
     permissionOverwrites: overwrites,
   });
 
@@ -104,10 +104,10 @@ export async function openTicket(guild, user, subject) {
 
   const welcome = embed
     .base(colors.primary)
-    .setTitle(`${emojis.ticket} Ticket #${String(number).padStart(4, '0')}`)
+    .setTitle(`${emojis.ticket} Atendimento #${String(number).padStart(4, '0')}`)
     .setDescription(
       [
-        `Olá ${user}, obrigado por abrir um ticket.`,
+        `Olá, ${user}! Obrigado por abrir um atendimento.`,
         'Descreva sua situação com detalhes — a equipe responderá assim que possível.',
         '',
         subject ? `**Assunto:** ${subject}` : null,
@@ -127,11 +127,11 @@ export async function openTicket(guild, user, subject) {
 }
 
 /**
- * Fecha o ticket: gera a transcrição, envia para o log e apaga o canal.
+ * Fecha o atendimento: gera a transcrição, envia para os registros e apaga o canal.
  */
 export async function closeTicket(channel, closedBy) {
   const ticket = selectByChannel.get(channel.id);
-  if (!ticket) return { ok: false, reason: 'Este canal não é um ticket.' };
+  if (!ticket) return { ok: false, reason: 'Este canal não é um atendimento.' };
 
   db.prepare('UPDATE tickets SET open = 0 WHERE channel_id = ?').run(channel.id);
 
@@ -140,7 +140,7 @@ export async function closeTicket(channel, closedBy) {
 
   const logEmbed = embed
     .base(colors.neutral)
-    .setTitle(`${emojis.ticket} Ticket #${String(ticket.number).padStart(4, '0')} fechado`)
+    .setTitle(`${emojis.ticket} Atendimento #${String(ticket.number).padStart(4, '0')} encerrado`)
     .addFields(
       { name: 'Aberto por', value: `<@${ticket.user_id}>`, inline: true },
       { name: 'Fechado por', value: `${closedBy}`, inline: true },
@@ -159,14 +159,14 @@ export async function closeTicket(channel, closedBy) {
     await sendToLog(channel.guild, settings.mod_log_channel, logEmbed);
   }
 
-  // Envia a transcrição por DM para quem abriu o ticket.
+  // Envia a transcrição por mensagem direta para quem abriu o atendimento.
   const author = await channel.client.users.fetch(ticket.user_id).catch(() => null);
   if (author) {
     await author
       .send({
         embeds: [
           embed.info(
-            `Seu ticket **#${String(ticket.number).padStart(4, '0')}** em **${channel.guild.name}** foi fechado. A transcrição está anexada.`,
+            `Seu atendimento **#${String(ticket.number).padStart(4, '0')}** em **${channel.guild.name}** foi encerrado. A transcrição está anexada.`,
           ),
         ],
         files: [await buildTranscript(channel, ticket)],
@@ -180,7 +180,7 @@ export async function closeTicket(channel, closedBy) {
 async function buildTranscript(channel, ticket) {
   const messages = await channel.messages.fetch({ limit: 100 }).catch(() => null);
   const lines = [
-    `Transcrição do ticket #${String(ticket.number).padStart(4, '0')}`,
+    `Transcrição do atendimento #${String(ticket.number).padStart(4, '0')}`,
     `Servidor: ${channel.guild.name}`,
     `Canal: #${channel.name}`,
     `Aberto por: ${ticket.user_id}`,
@@ -199,6 +199,6 @@ async function buildTranscript(channel, ticket) {
   }
 
   return new AttachmentBuilder(Buffer.from(lines.join('\n'), 'utf8'), {
-    name: `ticket-${String(ticket.number).padStart(4, '0')}.txt`,
+    name: `atendimento-${String(ticket.number).padStart(4, '0')}.txt`,
   });
 }

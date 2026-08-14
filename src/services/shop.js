@@ -12,7 +12,7 @@ export const ITEMS = [
     emoji: '👑',
     name: 'Coroa',
     price: 25_000,
-    description: 'O distintivo mais caro da loja. Puro status.',
+    description: 'O distintivo mais caro da loja. Para quem gosta de ostentar.',
   },
   {
     id: 'diamante',

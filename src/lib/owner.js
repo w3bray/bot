@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { logger } from './logger.js';
+import { quantidade } from './portugues.js';
 
 /**
  * Quem manda no bot.
@@ -29,7 +30,7 @@ export async function discoverOwners(client) {
     }
 
     if (discovered.size > 0) {
-      logger.info(`Dono(s) do bot identificado(s) automaticamente: ${discovered.size}.`);
+      logger.info(`${quantidade(discovered.size, 'dono do bot identificado', 'donos do bot identificados')} automaticamente.`);
     } else {
       logger.warn(
         'Não consegui identificar o dono da aplicação. Preencha OWNER_IDS no .env para usar /dono.',

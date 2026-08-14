@@ -1,4 +1,5 @@
 import { aviso, bloco, familia, opt } from '../../lib/familia.js';
+import { quantidade } from '../../lib/portugues.js';
 
 const T = (max = 1000) => opt.texto('texto', 'O texto', true, { max });
 
@@ -97,7 +98,7 @@ export default familia({
     },
     {
       name: 'largura-total',
-      description: 'Ｅｓｃｒｉｔａ ｌａｒｇａ, estilo vaporwave.',
+      description: 'Transforma o texto em escrita larga, no estilo vaporwave.',
       options: [T(300)],
       run: ({ texto }) => bloco(larguraTotal(texto)),
     },
@@ -214,7 +215,7 @@ export default familia({
       run: ({ texto, procurar, trocar }) => {
         const resultado = texto.replaceAll(procurar, trocar ?? '');
         const trocas = texto.split(procurar).length - 1;
-        return `${trocas} troca(s).\n${bloco(resultado)}`;
+        return `${quantidade(trocas, 'troca')}.\n${bloco(resultado)}`;
       },
     },
     {
@@ -250,7 +251,7 @@ export default familia({
       run: ({ texto }) => {
         const todas = linhas(texto);
         const unicas = [...new Set(todas)];
-        return `Removi **${todas.length - unicas.length}** repetida(s).\n${bloco(unicas.join('\n'))}`;
+        return `Removi **${quantidade(todas.length - unicas.length, 'linha repetida', 'linhas repetidas')}**.\n${bloco(unicas.join('\n'))}`;
       },
     },
     {

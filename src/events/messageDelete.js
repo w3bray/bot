@@ -11,7 +11,7 @@ export default {
     if (!message.guild || message.author?.bot) return;
     if (message.partial) return; // conteúdo não estava em cache: nada a registrar
 
-    // Guarda em memória para o /snipe, mesmo que os logs estejam desligados.
+    // Guarda em memória para o /apagada, mesmo que os logs estejam desligados.
     remember(message);
 
     const settings = getGuildConfig(message.guild.id);

@@ -6,6 +6,7 @@ import {
 } from 'discord.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { createCase } from '../../services/modcase.js';
+import { quantidade } from '../../lib/portugues.js';
 
 // A API só apaga em massa mensagens com menos de 14 dias.
 const MAX_AGE = 14 * 24 * 60 * 60 * 1000;
@@ -85,11 +86,11 @@ export default {
       type: 'purge',
       user: interaction.user,
       moderator: interaction.user,
-      reason: `${deleted.size} mensagem(ns) apagada(s) em #${interaction.channel.name}${user ? ` · filtro: ${user.tag}` : ''}`,
+      reason: `${quantidade(deleted.size, 'mensagem apagada', 'mensagens apagadas')} em #${interaction.channel.name}${user ? ` · filtro: ${user.tag}` : ''}`,
     });
 
     await interaction.editReply({
-      embeds: [embed.success(`**${deleted.size}** mensagem(ns) apagada(s).`)],
+      embeds: [embed.success(`Apaguei **${quantidade(deleted.size, 'mensagem')}**.`)],
     });
   },
 };

@@ -55,6 +55,45 @@ const ENIGMAS = [
   ['Tenho dentes mas não mordo. O que sou?', 'o pente'],
 ];
 
+const LOGICA = [
+  [
+    'Ana chegou antes de Bruno. Bruno chegou antes de Carla. Quem chegou por último?',
+    'Carla',
+  ],
+  [
+    'Todos os relatórios aprovados foram revisados. Este relatório não foi revisado. Ele pode ter sido aprovado?',
+    'Não. Se tivesse sido aprovado, teria sido revisado.',
+  ],
+  [
+    'Há três caixas: uma só com maçãs, uma só com laranjas e uma mista. Todos os rótulos estão errados. De qual caixa você tira uma fruta primeiro?',
+    'Da caixa rotulada como “mista”, porque ela não pode ser mista.',
+  ],
+  [
+    'Uma tarefa leva 6 horas para uma pessoa. Duas pessoas igualmente produtivas dividem o trabalho sem perda. Quanto tempo levam?',
+    '3 horas',
+  ],
+];
+
+const SUDOKUS = [
+  [
+    '1 . | . 4\n. 4 | 1 .\n----+----\n. 1 | 4 .\n4 . | . 1',
+    '1 2 | 3 4\n3 4 | 1 2\n----+----\n2 1 | 4 3\n4 3 | 2 1',
+  ],
+  [
+    '. 3 | 4 .\n4 . | . 2\n----+----\n1 . | . 3\n. 4 | 1 .',
+    '2 3 | 4 1\n4 1 | 3 2\n----+----\n1 2 | 4 3\n3 4 | 1 2',
+  ],
+];
+
+const PALAVRAS_PROIBIDAS = [
+  ['backup', ['cópia', 'arquivo', 'segurança']],
+  ['servidor', ['Discord', 'canal', 'membro']],
+  ['prazo', ['data', 'entrega', 'tempo']],
+  ['reunião', ['pauta', 'equipe', 'chamada']],
+  ['senha', ['acesso', 'caractere', 'conta']],
+  ['projeto', ['tarefa', 'equipe', 'entrega']],
+];
+
 const EMOJI_FILME = [
   ['🦁👑', 'O Rei Leão'], ['🚢🧊💔', 'Titanic'], ['🕷️🕸️👦', 'Homem-Aranha'],
   ['🐠🔍', 'Procurando Nemo'], ['🧙‍♂️💍🌋', 'O Senhor dos Anéis'],
@@ -94,7 +133,7 @@ export default familia({
   name: 'jogo',
   // Promovidos a comando de topo: saem da família e viram /nome direto.
   atalhos: ['enigma', 'anagrama', 'curiosidade'],
-  description: 'Passatempos: enigmas, anagramas, quiz, desafios e curiosidades.',
+  description: 'Reúne enigmas, lógica, memória, palavras e conhecimentos gerais.',
   cooldown: 3,
   subs: [
     {
@@ -106,17 +145,20 @@ export default familia({
       },
     },
     {
-      name: 'palavra-oculta',
-      description: 'Adivinhe a palavra com letras escondidas.',
+      name: 'codigo-secreto',
+      description: 'Tente descobrir um código de quatro algarismos sem repetição.',
       run: () => {
-        const palavra = escolher(PALAVRAS);
-        const revelada = [...palavra].map((c, i) => (i === 0 || i === palavra.length - 1 || sortear(3) === 0 ? c : '_'));
-        return comResposta('🕵️ Palavra oculta', `\`${revelada.join(' ').toUpperCase()}\``, palavra);
+        const codigo = embaralhar([...Array(10).keys()]).slice(0, 4).join('');
+        return comResposta(
+          'Código secreto',
+          'O código tem **4 algarismos diferentes**. Cada pessoa pode mandar um palpite antes de revelar.',
+          codigo,
+        );
       },
     },
     {
       name: 'enigma',
-      description: 'Um enigma para quebrar a cabeça.',
+      description: 'Apresenta um enigma com a resposta escondida.',
       run: () => {
         const [pergunta, resposta] = escolher(ENIGMAS);
         return comResposta('🧩 Enigma', `**${pergunta}**`, resposta);
@@ -225,7 +267,7 @@ export default familia({
     },
     {
       name: 'curiosidade',
-      description: 'Uma curiosidade para o servidor.',
+      description: 'Mostra uma curiosidade para compartilhar no servidor.',
       run: () => `💡 **${escolher(CURIOSIDADES)}**`,
     },
     {
@@ -245,7 +287,7 @@ export default familia({
       },
     },
     {
-      name: 'odd-one-out',
+      name: 'intruso',
       description: 'Descubra qual item não pertence ao grupo.',
       run: () => {
         const grupos = [
@@ -322,16 +364,15 @@ export default familia({
         ]))}`,
     },
     {
-      name: 'quantos',
-      description: 'Chute quantos itens tem na imagem mental.',
+      name: 'logica',
+      description: 'Apresenta um problema curto de raciocínio lógico.',
       run: () => {
-        const coisas = ['jujubas no pote', 'estrelas no céu daqui', 'grãos de arroz na tigela', 'folhas na árvore'];
-        const total = 20 + sortear(480);
-        return comResposta('🔢 Quantos?', `Quantos(as) **${escolher(coisas)}**?`, total);
+        const [problema, resposta] = escolher(LOGICA);
+        return comResposta('Raciocínio lógico', problema, resposta);
       },
     },
     {
-      name: 'dois-verdades',
+      name: 'duas-verdades',
       description: 'Duas verdades e uma mentira, para o servidor adivinhar.',
       run: () => '🎭 **Duas verdades e uma mentira**\n\nMande três frases sobre você — duas verdadeiras e uma falsa.\nO pessoal tenta adivinhar qual é a mentira!',
     },
@@ -347,35 +388,31 @@ export default familia({
         ])}_`,
     },
     {
-      name: 'contagem',
-      description: 'Explica o jogo de contagem do servidor.',
-      run: () => '🔢 **Jogo da contagem**\n\nUma pessoa manda `1`, a próxima manda `2`, e assim por diante.\n\n**Regras:** ninguém manda dois números seguidos, e se alguém errar, volta para o `1`.',
+      name: 'sudoku',
+      description: 'Apresenta um sudoku 4×4 com a solução escondida.',
+      run: () => {
+        const [tabuleiro, solucao] = escolher(SUDOKUS);
+        return comResposta('Sudoku 4×4', bloco(tabuleiro), bloco(solucao), 'use os números de 1 a 4');
+      },
     },
     {
-      name: 'nunca-fiz',
-      description: 'Um "eu nunca" para o servidor.',
-      run: () =>
-        `🙋 **Eu nunca…**\n\n${escolher([
-          'perdi um voo.', 'menti a idade.', 'quebrei um osso.',
-          'dormi numa aula ou reunião.', 'cantei no chuveiro achando que estava sozinho.',
-          'mandei mensagem para a pessoa errada.', 'fingi que já tinha visto um filme.',
-        ])}\n\nQuem já fez, reage com ✋`,
+      name: 'categoria-relampago',
+      description: 'Sorteia uma categoria e uma letra para uma rodada rápida.',
+      run: () => {
+        const categoria = escolher([
+          'profissão', 'cidade', 'filme', 'objeto de escritório', 'tecnologia',
+          'comida', 'marca', 'animal', 'música', 'livro',
+        ]);
+        const letra = escolher('ABCDEFGHILMNOPRSTUV'.split(''));
+        return `## Categoria relâmpago\nEscreva um exemplo de **${categoria}** que comece com **${letra}**.\n\nA primeira resposta válida vence a rodada.`;
+      },
     },
     {
-      name: 'sorteio-rapido',
-      description: 'Sorteia um vencedor entre quem reagir.',
-      options: [opt.texto('premio', 'O que está em jogo', true, { max: 200 })],
-      run: async ({ premio }, interaction) => {
-        await interaction.reply({
-          embeds: [
-            embed.base(colors.primary)
-              .setTitle('🎉 Sorteio relâmpago')
-              .setDescription(`**Prêmio:** ${premio}\n\nReaja com 🎉 para participar!\n\n_Depois use \`/sorteio\` para sorteios com prazo e ganhadores automáticos._`),
-          ],
-        });
-        const mensagem = await interaction.fetchReply();
-        await mensagem.react('🎉').catch(() => null);
-        return null;
+      name: 'palavra-proibida',
+      description: 'Sorteia uma palavra para explicar sem usar os termos proibidos.',
+      run: () => {
+        const [palavra, proibidas] = escolher(PALAVRAS_PROIBIDAS);
+        return `## Palavra proibida\nFaça o grupo descobrir **${palavra}** sem dizer:\n${proibidas.map((item) => `• ${item}`).join('\n')}`;
       },
     },
   ],

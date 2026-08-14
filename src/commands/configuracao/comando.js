@@ -7,6 +7,7 @@ import {
 import { db, getGuildConfig } from '../../lib/db.js';
 import { colors } from '../../config.js';
 import { embed, replyError, truncate } from '../../lib/embeds.js';
+import { quantidade } from '../../lib/portugues.js';
 
 const MAX_COMMANDS = 100;
 const NAME_PATTERN = /^[a-z0-9_-]{1,32}$/;
@@ -157,12 +158,12 @@ async function list(interaction) {
         .setDescription(
           truncate(
             rows
-              .map((row) => `\`${settings.prefix}${row.name}\` — ${row.uses} uso(s)`)
+              .map((row) => `\`${settings.prefix}${row.name}\` — ${quantidade(row.uses, 'uso')}`)
               .join('\n'),
             4000,
           ),
         )
-        .setFooter({ text: `${rows.length} comando(s) · prefixo atual: ${settings.prefix}` }),
+        .setFooter({ text: `${quantidade(rows.length, 'comando')} · prefixo atual: ${settings.prefix}` }),
     ],
     flags: MessageFlags.Ephemeral,
   });

@@ -1,12 +1,25 @@
 import { InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { colors } from '../../config.js';
 import { embed, truncate } from '../../lib/embeds.js';
+import { quantidade } from '../../lib/portugues.js';
 import { timestamp } from '../../lib/time.js';
+
+const PERMISSOES = {
+  Administrator: 'Administrador',
+  ManageGuild: 'Gerenciar servidor',
+  ManageRoles: 'Gerenciar cargos',
+  ManageChannels: 'Gerenciar canais',
+  BanMembers: 'Banir membros',
+  KickMembers: 'Expulsar membros',
+  ModerateMembers: 'Moderar membros',
+  ManageMessages: 'Gerenciar mensagens',
+  MentionEveryone: 'Mencionar todos',
+};
 
 export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
-    .setName('cargoinfo')
+    .setName('info-cargo')
     .setDescription('Mostra informações sobre um cargo.')
     .addRoleOption((option) =>
       option.setName('cargo').setDescription('Qual cargo?').setRequired(true),
@@ -20,31 +33,17 @@ export default {
     await interaction.guild.members.fetch().catch(() => null);
     const members = role.members.size;
 
-    const keyPermissions = role.permissions
-      .toArray()
-      .filter((permission) =>
-        [
-          'Administrator',
-          'ManageGuild',
-          'ManageRoles',
-          'ManageChannels',
-          'BanMembers',
-          'KickMembers',
-          'ModerateMembers',
-          'ManageMessages',
-          'MentionEveryone',
-        ].includes(permission),
-      );
+    const keyPermissions = role.permissions.toArray().filter((permission) => PERMISSOES[permission]);
 
     await interaction.reply({
       embeds: [
         embed
           .base(role.color || undefined)
-          .setTitle(`Cargo: ${role.name}`)
+          .setTitle(`Informações de ${role.name}`)
           .addFields(
             { name: 'ID', value: `\`${role.id}\``, inline: true },
             { name: 'Cor', value: role.hexColor, inline: true },
-            { name: 'Membros', value: `${members}`, inline: true },
+            { name: 'Membros', value: quantidade(members, 'membro'), inline: true },
             { name: 'Posição', value: `${role.position}`, inline: true },
             { name: 'Exibido separadamente', value: role.hoist ? 'sim' : 'não', inline: true },
             { name: 'Mencionável', value: role.mentionable ? 'sim' : 'não', inline: true },
@@ -53,8 +52,8 @@ export default {
               name: 'Permissões importantes',
               value: truncate(
                 keyPermissions.length > 0
-                  ? keyPermissions.map((permission) => `\`${permission}\``).join(', ')
-                  : '*nenhuma permissão sensível*',
+                  ? keyPermissions.map((permission) => `\`${PERMISSOES[permission]}\``).join(', ')
+                  : '*Nenhuma permissão sensível.*',
               ),
             },
           ),

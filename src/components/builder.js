@@ -10,6 +10,7 @@ import {
 import { colors } from '../config.js';
 import { embed, replyError } from '../lib/embeds.js';
 import { logger } from '../lib/logger.js';
+import { quantidade } from '../lib/portugues.js';
 import { buildServer, EXTRAS, planSummary, selectedCategories, TEMPLATES } from '../services/templates.js';
 
 // Os extras viajam dentro do custom_id, que é limitado a 100 caracteres e usa
@@ -197,7 +198,7 @@ async function create(interaction, [key, rawExtras]) {
   const { created, failures } = await buildServer(interaction.guild, template, extras);
 
   if (failures.length > 0) {
-    logger.warn(`/construir: ${failures.length} falha(s) em ${interaction.guild.id}`);
+    logger.warn(`/construir: ${quantidade(failures.length, 'falha')} em ${interaction.guild.id}`);
   }
 
   const done = embed
@@ -209,7 +210,7 @@ async function create(interaction, [key, rawExtras]) {
 
   if (failures.length > 0) {
     done.addFields({
-      name: `⚠️ ${failures.length} item(ns) não foram criados`,
+      name: `⚠️ ${quantidade(failures.length, 'item não criado', 'itens não criados')}`,
       value: failures.slice(0, 8).join('\n').slice(0, 1024),
     });
     done.setFooter({ text: 'O motivo mais comum é o cargo do bot estar abaixo na lista de cargos.' });

@@ -1,4 +1,5 @@
 import { aviso, familia, opt } from '../../lib/familia.js';
+import { quantidade } from '../../lib/portugues.js';
 
 const FUSOS = [
   { name: 'Brasília (BRT)', value: 'America/Sao_Paulo' },
@@ -113,7 +114,7 @@ export default familia({
         return [
           `**${dias.toLocaleString('pt-BR')}** dias`,
           `**${Math.floor(dias / 7).toLocaleString('pt-BR')}** semanas`,
-          anos > 0 ? `Aproximadamente **${anos}** ano(s) e **${meses}** mês(es)` : null,
+          anos > 0 ? `Aproximadamente **${quantidade(anos, 'ano')}** e **${quantidade(meses, 'mês', 'meses')}**` : null,
           `**${(dias * 24).toLocaleString('pt-BR')}** horas`,
         ].filter(Boolean).join('\n');
       },

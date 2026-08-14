@@ -18,14 +18,14 @@ import { ChannelType, PermissionFlagsBits } from 'discord.js';
 export const EXTRAS = {
   cargos: { label: 'Criar os cargos do modelo', emoji: '🎭' },
   voz: { label: 'Criar os canais de voz', emoji: '🔊' },
-  staff: { label: 'Criar a área privada da staff', emoji: '🔒' },
+  staff: { label: 'Criar a área privada da equipe', emoji: '🔒' },
 };
 
 export const TEMPLATES = {
   hacking: {
-    label: 'Hacking & Segurança',
+    label: 'Segurança e tecnologia',
     emoji: '🔐',
-    short: 'CTF, write-ups, ferramentas e estudo de segurança',
+    short: 'CTF, soluções comentadas, ferramentas e estudo de segurança',
     color: 0x00ff9c,
     categories: [
       {
@@ -41,7 +41,7 @@ export const TEMPLATES = {
         name: '🛡️ segurança',
         channels: [
           { name: 'ctf', topic: 'Competições de captura de bandeira: avisos e times.' },
-          { name: 'write-ups', topic: 'Soluções comentadas dos desafios já encerrados.' },
+          { name: 'soluções-ctf', topic: 'Soluções comentadas dos desafios já encerrados.' },
           { name: 'ferramentas', topic: 'Indicação e discussão de ferramentas.' },
           { name: 'laboratórios', topic: 'HackTheBox, TryHackMe, PortSwigger e afins.' },
           { name: 'certificações', topic: 'Trilhas de estudo e provas.' },
@@ -52,7 +52,7 @@ export const TEMPLATES = {
         name: '💻 desenvolvimento',
         channels: [
           { name: 'código', topic: 'Programação em geral.' },
-          { name: 'scripts', topic: 'Automações e ferramentas próprias.' },
+          { name: 'automações', topic: 'Automações e ferramentas próprias.' },
           { name: 'projetos', topic: 'Mostre o que você está construindo.' },
         ],
       },
@@ -60,7 +60,7 @@ export const TEMPLATES = {
         name: '💬 comunidade',
         channels: [
           { name: 'geral', topic: 'Conversa livre.' },
-          { name: 'off-topic', topic: 'Qualquer assunto fora do tema.' },
+          { name: 'assuntos-diversos', topic: 'Qualquer assunto fora do tema.' },
           { name: 'vagas', topic: 'Oportunidades de trabalho e estágio.' },
           { name: 'memes', topic: 'O necessário.' },
         ],
@@ -68,20 +68,20 @@ export const TEMPLATES = {
       {
         name: '🔊 voz',
         voice: true,
-        channels: [{ name: 'Lobby' }, { name: 'Sala de CTF', limit: 10 }, { name: 'Foco', limit: 5 }],
+        channels: [{ name: 'Recepção' }, { name: 'Sala de CTF', limit: 10 }, { name: 'Foco', limit: 5 }],
       },
       {
-        name: '🔒 staff',
+        name: '🔒 equipe',
         staff: true,
         channels: [
-          { name: 'staff-chat', topic: 'Conversa interna da equipe.' },
-          { name: 'logs', topic: 'Registro automático de moderação.' },
+          { name: 'conversa-equipe', topic: 'Conversa interna da equipe.' },
+          { name: 'registros', topic: 'Registro automático de moderação.' },
           { name: 'denúncias', topic: 'Relatos recebidos dos membros.' },
         ],
       },
     ],
     roles: [
-      { name: 'Admin', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
+      { name: 'Administrador', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
       {
         name: 'Moderador',
         color: 0x3498db,
@@ -93,7 +93,7 @@ export const TEMPLATES = {
           PermissionFlagsBits.ManageMessages,
         ],
       },
-      { name: 'CTF Player', color: 0x00ff9c, hoist: true },
+      { name: 'Competidor de CTF', color: 0x00ff9c, hoist: true },
       { name: 'Membro', color: 0x95a5a6 },
       { name: 'Iniciante', color: 0xf1c40f },
     ],
@@ -102,7 +102,7 @@ export const TEMPLATES = {
   comunidade: {
     label: 'Comunidade',
     emoji: '💬',
-    short: 'Estrutura clássica: conversa, mídia, voz e staff',
+    short: 'Estrutura clássica: conversa, mídia, voz e equipe',
     color: 0x5865f2,
     categories: [
       {
@@ -117,7 +117,7 @@ export const TEMPLATES = {
         name: '💬 conversa',
         channels: [
           { name: 'geral', topic: 'Papo livre.' },
-          { name: 'off-topic', topic: 'Assuntos aleatórios.' },
+          { name: 'assuntos-diversos', topic: 'Assuntos aleatórios.' },
           { name: 'desabafo', topic: 'Espaço para desabafar com respeito.' },
         ],
       },
@@ -137,19 +137,19 @@ export const TEMPLATES = {
       {
         name: '🔊 voz',
         voice: true,
-        channels: [{ name: 'Geral' }, { name: 'Música' }, { name: 'AFK' }],
+        channels: [{ name: 'Geral' }, { name: 'Música' }, { name: 'Ausente' }],
       },
       {
-        name: '🔒 staff',
+        name: '🔒 equipe',
         staff: true,
         channels: [
-          { name: 'staff-chat', topic: 'Equipe.' },
-          { name: 'logs', topic: 'Registro de moderação.' },
+          { name: 'conversa-equipe', topic: 'Conversa da equipe.' },
+          { name: 'registros', topic: 'Registro de moderação.' },
         ],
       },
     ],
     roles: [
-      { name: 'Admin', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
+      { name: 'Administrador', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
       {
         name: 'Moderador',
         color: 0x3498db,
@@ -165,7 +165,7 @@ export const TEMPLATES = {
   },
 
   gaming: {
-    label: 'Gaming',
+    label: 'Jogos',
     emoji: '🎮',
     short: 'Canais por jogo, procura de time e salas de voz',
     color: 0x9b59b6,
@@ -183,32 +183,32 @@ export const TEMPLATES = {
         channels: [
           { name: 'procura-time', topic: 'Chame gente para jogar.' },
           { name: 'clipes', topic: 'Suas melhores jogadas.' },
-          { name: 'dicas', topic: 'Builds, estratégias e guias.' },
+          { name: 'dicas', topic: 'Configurações, estratégias e guias.' },
           { name: 'sugestões-de-jogo', topic: 'O que jogamos depois?' },
         ],
       },
       {
         name: '💬 comunidade',
-        channels: [{ name: 'geral' }, { name: 'off-topic' }, { name: 'memes' }],
+        channels: [{ name: 'geral' }, { name: 'assuntos-diversos' }, { name: 'memes' }],
       },
       {
         name: '🔊 voz',
         voice: true,
         channels: [
-          { name: 'Lobby' },
-          { name: 'Squad 1', limit: 5 },
-          { name: 'Squad 2', limit: 5 },
-          { name: 'AFK' },
+          { name: 'Recepção' },
+          { name: 'Equipe 1', limit: 5 },
+          { name: 'Equipe 2', limit: 5 },
+          { name: 'Ausente' },
         ],
       },
       {
-        name: '🔒 staff',
+        name: '🔒 equipe',
         staff: true,
-        channels: [{ name: 'staff-chat' }, { name: 'logs' }],
+        channels: [{ name: 'conversa-equipe' }, { name: 'registros' }],
       },
     ],
     roles: [
-      { name: 'Admin', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
+      { name: 'Administrador', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
       {
         name: 'Moderador',
         color: 0x3498db,
@@ -246,7 +246,7 @@ export const TEMPLATES = {
       },
       {
         name: '💬 convivência',
-        channels: [{ name: 'geral' }, { name: 'off-topic' }],
+        channels: [{ name: 'geral' }, { name: 'assuntos-diversos' }],
       },
       {
         name: '🔊 salas de foco',
@@ -258,13 +258,13 @@ export const TEMPLATES = {
         ],
       },
       {
-        name: '🔒 staff',
+        name: '🔒 equipe',
         staff: true,
-        channels: [{ name: 'staff-chat' }, { name: 'logs' }],
+        channels: [{ name: 'conversa-equipe' }, { name: 'registros' }],
       },
     ],
     roles: [
-      { name: 'Admin', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
+      { name: 'Administrador', color: 0xe74c3c, hoist: true, permissions: [PermissionFlagsBits.Administrator] },
       { name: 'Monitor', color: 0x3498db, hoist: true, permissions: [PermissionFlagsBits.ManageMessages] },
       { name: 'Estudante', color: 0x2ecc71 },
     ],

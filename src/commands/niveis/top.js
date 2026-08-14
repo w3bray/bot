@@ -10,7 +10,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 export default {
   cooldown: 10,
   data: new SlashCommandBuilder()
-    .setName('top')
+    .setName('ranking')
     .setDescription('Mostra os rankings do servidor.')
     .addSubcommand((sub) =>
       sub.setName('niveis').setDescription('Ranking de XP e níveis.'),
@@ -53,7 +53,7 @@ async function showLevels(interaction) {
         .setTitle(`📈 Ranking de níveis · ${interaction.guild.name}`)
         .setDescription(lines.join('\n'))
         .setThumbnail(interaction.guild.iconURL({ size: 256 }))
-        .setFooter({ text: 'Use /rank para ver sua posição detalhada.' }),
+        .setFooter({ text: 'Use /nivel para ver sua posição detalhada.' }),
     ],
   });
 }
@@ -64,7 +64,7 @@ async function showRichest(interaction) {
 
   if (rows.length === 0) {
     return interaction.editReply({
-      embeds: [embed.info('Ninguém tem moedas neste servidor ainda. Use `/daily` para começar!')],
+      embeds: [embed.info('Ainda não há ninguém no ranking. Use `/diario` para começar.')],
     });
   }
 

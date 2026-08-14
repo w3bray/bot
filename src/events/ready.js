@@ -3,13 +3,14 @@ import { logger } from '../lib/logger.js';
 import { discoverOwners } from '../lib/owner.js';
 import { shardLabel, totalGuilds } from '../lib/shard.js';
 import { maybeDeployCommands } from '../services/autodeploy.js';
+import { quantidade } from '../lib/portugues.js';
 
 export default {
   name: Events.ClientReady,
   once: true,
   async execute(client) {
     logger.info(`Conectado como ${client.user.tag} (${shardLabel(client)})`);
-    logger.info(`Este processo atende ${client.guilds.cache.size} servidor(es).`);
+    logger.info(`Este processo atende ${quantidade(client.guilds.cache.size, 'servidor')}.`);
 
     await discoverOwners(client);
     await maybeDeployCommands(client);

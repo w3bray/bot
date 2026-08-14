@@ -27,7 +27,7 @@ export default familia({
   name: 'codigo',
   // Promovidos a comando de topo: saem da família e viram /nome direto.
   atalhos: ['md5', 'sha256', 'rot13', 'unicode'],
-  description: 'Codificar, decodificar, gerar hash e inspecionar texto.',
+  description: 'Codifica, decodifica, gera hashes e inspeciona textos.',
   cooldown: 3,
   subs: [
     {
@@ -130,7 +130,7 @@ export default familia({
     },
     {
       name: 'rot13',
-      description: 'Aplica a cifra ROT13 (aplicar de novo desfaz).',
+      description: 'Aplica ROT13 ao texto; executar novamente desfaz a transformação.',
       options: [T()],
       run: ({ texto }) => bloco(rot(texto, 13)),
     },
@@ -142,7 +142,7 @@ export default familia({
     },
     {
       name: 'md5',
-      description: 'Hash MD5 do texto.',
+      description: 'Calcula o hash MD5 de um texto.',
       options: [T()],
       run: ({ texto }) => bloco(hash('md5', texto)),
     },
@@ -154,7 +154,7 @@ export default familia({
     },
     {
       name: 'sha256',
-      description: 'Hash SHA-256 do texto.',
+      description: 'Calcula o hash SHA-256 de um texto.',
       options: [T()],
       run: ({ texto }) => bloco(hash('sha256', texto)),
     },

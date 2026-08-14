@@ -7,7 +7,7 @@ import { recall } from '../../services/snipe.js';
 export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
-    .setName('snipe')
+    .setName('apagada')
     .setDescription('Mostra a última mensagem apagada neste canal (guardada por 10 minutos).')
     // Restrito a quem modera: recuperar mensagem apagada é uma ação sensível.
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)

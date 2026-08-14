@@ -2,6 +2,7 @@ import { db, getGuildConfig } from '../lib/db.js';
 import { colors, emojis } from '../config.js';
 import { embed, truncate } from '../lib/embeds.js';
 import { logger } from '../lib/logger.js';
+import { quantidade } from '../lib/portugues.js';
 
 const selectEntry = db.prepare('SELECT * FROM starboard WHERE guild_id = ? AND message_id = ?');
 const upsertEntry = db.prepare(`
@@ -63,7 +64,7 @@ export async function sync(reaction) {
     const posted = await channel.send(payload);
     upsertEntry.run(message.guild.id, message.id, posted.id, stars);
   } catch (error) {
-    logger.debug('Falha ao sincronizar starboard:', error.message);
+    logger.debug('Falha ao atualizar o mural de destaques:', error.message);
   }
 }
 
@@ -76,7 +77,7 @@ function buildEmbed(message, stars) {
     })
     .setDescription(truncate(message.content || '*(sem texto)*', 4000))
     .addFields({ name: 'Original', value: `[Ir para a mensagem](${message.url})` })
-    .setFooter({ text: `${stars} estrela(s) · ID ${message.id}` })
+    .setFooter({ text: `${quantidade(stars, 'estrela')} · ID ${message.id}` })
     .setTimestamp(message.createdTimestamp);
 
   const image = message.attachments.find((attachment) =>

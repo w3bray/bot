@@ -132,7 +132,7 @@ async function finish(interaction, client, reroll) {
     embeds: [
       embed.success(
         result.winners.length > 0
-          ? `Sorteio ${reroll ? 'resorteado' : 'encerrado'}. Ganhador(es): ${result.winners.map((id) => `<@${id}>`).join(', ')}`
+          ? `Sorteio ${reroll ? 'resorteado' : 'encerrado'}. ${result.winners.length === 1 ? 'Ganhador' : 'Ganhadores'}: ${result.winners.map((id) => `<@${id}>`).join(', ')}`
           : 'Sorteio encerrado, mas ninguém participou.',
       ),
     ],

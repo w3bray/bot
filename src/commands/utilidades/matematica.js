@@ -105,7 +105,7 @@ export default familia({
   subs: [
     {
       name: 'calcular',
-      description: 'Resolve uma expressão: 2 + 3 * (4 - 1) ^ 2',
+      description: 'Resolve uma expressão, como 2 + 3 × (4 - 1)².',
       options: [opt.texto('expressao', 'A conta', true, { max: 200 })],
       run: ({ expressao }) => `\`${expressao}\` = **${fmt(avaliar(expressao))}**`,
     },
@@ -271,7 +271,7 @@ export default familia({
       },
     },
     {
-      name: 'equacao2grau',
+      name: 'equacao-segundo-grau',
       description: 'Resolve ax² + bx + c = 0.',
       options: [N('a', 'Coeficiente a'), N('b', 'Coeficiente b'), N('c', 'Coeficiente c')],
       run: ({ a, b, c }) => {

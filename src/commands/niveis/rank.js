@@ -8,7 +8,7 @@ const BAR_LENGTH = 20;
 export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
-    .setName('rank')
+    .setName('nivel')
     .setDescription('Mostra seu nível e progresso de XP.')
     .addUserOption((option) =>
       option.setName('usuario').setDescription('De quem? (padrão: você)'),

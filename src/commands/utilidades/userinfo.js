@@ -9,9 +9,9 @@ const BADGES = {
   [UserFlags.Hypesquad]: 'HypeSquad',
   [UserFlags.BugHunterLevel1]: 'Caçador de Bugs',
   [UserFlags.BugHunterLevel2]: 'Caçador de Bugs II',
-  [UserFlags.HypeSquadOnlineHouse1]: 'Bravery',
-  [UserFlags.HypeSquadOnlineHouse2]: 'Brilliance',
-  [UserFlags.HypeSquadOnlineHouse3]: 'Balance',
+  [UserFlags.HypeSquadOnlineHouse1]: 'HypeSquad Bravery (Coragem)',
+  [UserFlags.HypeSquadOnlineHouse2]: 'HypeSquad Brilliance (Brilho)',
+  [UserFlags.HypeSquadOnlineHouse3]: 'HypeSquad Balance (Equilíbrio)',
   [UserFlags.PremiumEarlySupporter]: 'Apoiador Inicial',
   [UserFlags.VerifiedDeveloper]: 'Desenvolvedor Verificado',
   [UserFlags.CertifiedModerator]: 'Moderador Certificado',
@@ -21,7 +21,7 @@ const BADGES = {
 export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
-    .setName('userinfo')
+    .setName('info-usuario')
     .setDescription('Mostra informações sobre um usuário.')
     .addUserOption((option) =>
       option.setName('usuario').setDescription('De quem? (padrão: você)'),

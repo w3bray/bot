@@ -16,11 +16,11 @@ export const CASE_LABELS = {
   ban: { label: 'Banimento', color: colors.danger, emoji: '🔨' },
   unban: { label: 'Desbanimento', color: colors.success, emoji: '🔓' },
   kick: { label: 'Expulsão', color: colors.warning, emoji: '👢' },
-  timeout: { label: 'Castigo (timeout)', color: colors.warning, emoji: '🔇' },
+  timeout: { label: 'Castigo temporário', color: colors.warning, emoji: '🔇' },
   untimeout: { label: 'Castigo removido', color: colors.success, emoji: '🔊' },
   warn: { label: 'Advertência', color: colors.warning, emoji: '⚠️' },
   unwarn: { label: 'Advertência removida', color: colors.success, emoji: '🗑️' },
-  automod: { label: 'AutoMod', color: colors.danger, emoji: '🤖' },
+  automod: { label: 'Moderação automática', color: colors.danger, emoji: '🤖' },
   purge: { label: 'Limpeza de mensagens', color: colors.neutral, emoji: '🧹' },
 };
 

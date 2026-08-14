@@ -61,7 +61,7 @@ export default {
         )
         .addStringOption((option) =>
           option
-            .setName('status')
+            .setName('situacao')
             .setDescription('Nova situação')
             .setRequired(true)
             .addChoices(
@@ -87,7 +87,7 @@ async function send(interaction) {
   if (!settings.suggestion_channel) {
     return replyError(
       interaction,
-      'Nenhum canal de sugestões configurado. A equipe pode definir um com `/config sugestoes`.',
+      'O canal de sugestões ainda não foi configurado. A equipe pode defini-lo com `/configurar sugestoes`.',
     );
   }
 
@@ -139,7 +139,7 @@ async function decide(interaction) {
   }
 
   const messageId = interaction.options.getString('mensagem').trim();
-  const status = interaction.options.getString('status');
+  const status = interaction.options.getString('situacao');
   const reason = interaction.options.getString('motivo');
 
   const suggestion = db.prepare('SELECT * FROM suggestions WHERE message_id = ?').get(messageId);

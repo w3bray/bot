@@ -1,11 +1,11 @@
 # Bot de Discord multiuso
 
-Bot completo em **Node.js + discord.js v14**, com moderação, AutoMod, níveis, economia,
-perfis sociais, tickets, sorteios, enquetes, jogos, logs, starboard, painel de cargos,
+Bot completo em **Node.js + discord.js v14**, com moderação automática, níveis, economia,
+perfis sociais, atendimento, sorteios, enquetes, jogos, registros, mural de destaques e painel de cargos,
 download de vídeos, construtor de servidor e um comando de IA.
 
-Tudo em português do Brasil, com **400 comandos** em **100 comandos de barra** — o máximo
-que o Discord permite —,
+Tudo em português do Brasil, com **100 comandos principais e 400 rotas executáveis** — usando
+todo o limite de comandos globais do Discord —,
 persistência em SQLite e
 carregamento automático de comandos, eventos e botões.
 
@@ -32,26 +32,27 @@ carregamento automático de comandos, eventos e botões.
 
 | Módulo | Recursos |
 |---|---|
-| 🛡️ **Moderação** | Ban, kick, castigo (timeout), advertências com punição automática por acúmulo, limpeza de mensagens com filtros, trancar canal, modo lento, gerenciar cargos e apelidos |
-| 📋 **Casos** | Toda punição vira um caso numerado, gravado no banco e enviado ao canal de logs. Consulta por usuário ou por número |
-| 🤖 **AutoMod** | Anti-convite, anti-link, antispam, anti-CAPS, limite de menções e lista de palavras proibidas. Punição configurável (apagar, castigar, expulsar, banir) e isenção por cargo/canal |
-| 📈 **Níveis** | XP por mensagem com cooldown, curva progressiva, ranking, cargos entregues automaticamente ao subir de nível |
-| 🪙 **Economia** | Recompensa diária com sequência, trabalho, banco (cofre à prova de roubo), roubo com risco de multa, transferência, aposta, loja de distintivos e ranking de riqueza |
-| 💞 **Social** | Perfil completo com nível, patrimônio, reputação e distintivos; bio, reputação diária e casamento com pedido por botão |
+| 🛡️ **Moderação** | Banimento, expulsão, castigo temporário, advertências com punição automática por acúmulo, limpeza de mensagens com filtros, controle de canais, cargos e apelidos |
+| 📋 **Casos** | Toda punição vira um caso numerado, gravado no banco e enviado ao canal de registros. Consulta por usuário ou por número |
+| 🤖 **Moderação automática** | Anti-convite, anti-link, antispam, limite de letras maiúsculas e de menções, além de uma lista de palavras proibidas. Punição configurável e isenção por cargo ou canal |
+| 📈 **Níveis** | XP por mensagem com tempo de espera, curva progressiva, classificação e cargos entregues automaticamente ao subir de nível |
+| 🪙 **Economia** | Recompensa diária, trabalho, banco, transferência, apostas com moeda virtual, loja, classificação por patrimônio e calculadoras financeiras |
+| 💞 **Social** | Perfil completo com nível, patrimônio, reputação e distintivos; biografia, reputação diária e casamento com pedido por botão |
 | 🎮 **Jogos** | Jogo da velha PvP no tabuleiro de botões e quiz de conhecimentos gerais que premia quem acerta primeiro |
 | 📥 **Download de vídeo** | `/baixar` puxa o vídeo de um link e envia no canal, com opção de extrair só o áudio |
-| 🎫 **Tickets** | Painel com botão, canal privado por atendimento, botões de assumir/fechar, transcrição enviada por DM e para o log |
+| 🎫 **Atendimento** | Painel com botão, canal privado, opções de assumir e encerrar, além de transcrição por mensagem direta e no canal de registros |
 | 🎉 **Sorteios** | Botão de participação (clicar de novo cancela), exigência de cargo, encerramento automático e resorteio |
 | 📊 **Enquetes** | Até 5 opções, votação por botão, barra de resultados ao vivo, escolha única ou múltipla, encerramento automático |
-| ⭐ **Starboard** | Mensagens que recebem ⭐ suficientes vão para um mural, com contador que se atualiza sozinho |
+| ⭐ **Mural de destaques** | Mensagens que recebem ⭐ suficientes vão para um mural, com contador que se atualiza sozinho |
 | 👋 **Boas-vindas** | Mensagens de entrada e saída com marcadores, e cargo automático para novos membros |
-| 📜 **Logs** | Entradas, saídas, mensagens apagadas e editadas |
+| 📜 **Registros** | Entradas, saídas, mensagens apagadas e editadas |
 | 🎭 **Painel de cargos** | Botões para o membro pegar e remover cargos sozinho |
 | 💡 **Sugestões** | Canal de sugestões com votação por botão e decisão da equipe |
 | 💬 **Comandos próprios** | A equipe cria respostas automáticas do servidor, acionadas por prefixo |
 | 🧠 **IA** | `/ia` responde perguntas usando a API da Anthropic (opcional) |
-| 🔧 **Utilidades** | Ping, userinfo, serverinfo, avatar, cargoinfo, botinfo, lembretes, AFK, snipe e ajuda navegável |
-| 🎲 **Diversão** | Bola 8, dados, escolher, pedra-papel-tesoura e ship |
+| 🔧 **Utilidades** | Latência, informações do usuário, servidor, cargo e bot, lembretes, ausência, mensagem apagada e ajuda navegável |
+| 🎯 **Planejamento** | Pautas, atas, feedback, metas, 5W2H, matriz de risco, prioridades, cronogramas e planos de comunicação |
+| 🎲 **Sorteios e lazer** | Dados, escolhas ponderadas, amostragens, jokenpô e jogos rápidos para o servidor |
 
 ---
 
@@ -105,7 +106,7 @@ em processo único. Veja também [Sharding](#sharding).
 3. Em **General Information**, copie o *Application ID* para `CLIENT_ID`.
 4. Ainda em **Bot**, ative as três *Privileged Gateway Intents*:
    - ✅ **Server Members Intent** — boas-vindas, autorole e informações de membros
-   - ✅ **Message Content Intent** — AutoMod e sistema de níveis
+   - ✅ **Message Content Intent** — moderação automática e sistema de níveis
    - ✅ **Presence Intent** — opcional, não é usada hoje
 5. Em **OAuth2 → URL Generator**, marque os escopos `bot` e `applications.commands`,
    selecione as permissões abaixo e use o link gerado para convidar o bot.
@@ -146,20 +147,20 @@ npm run clear           # remove todos os comandos do escopo atual
 Depois de convidar o bot, rode estes comandos (todos exigem **Gerenciar Servidor**):
 
 ```
-/config logs tipo:Moderação canal:#logs-mod
-/config logs tipo:Servidor canal:#logs-servidor
-/config boasvindas canal:#bem-vindos mensagem:Bem-vindo(a) ao {server}, {user}!
-/config autorole cargo:@Membro
-/config niveis ativar:true canal:#níveis
-/config recompensa nivel:10 cargo:@Ativo
-/config starboard canal:#destaques minimo:5
-/config tickets categoria:Atendimento cargo:@Suporte log:#logs-tickets
-/ticket painel
-/automod filtros convites:true spam:true
-/automod punicao acao:Apagar e castigar minutos:10
+/configurar registros tipo:Moderação canal:#registros-mod
+/configurar registros tipo:Servidor canal:#registros-servidor
+/configurar boas-vindas canal:#bem-vindos mensagem:Boas-vindas ao {server}, {user}!
+/configurar cargo-automatico cargo:@Membro
+/configurar niveis ativar:true canal:#níveis
+/configurar recompensa nivel:10 cargo:@Ativo
+/configurar destaques canal:#destaques minimo:5
+/configurar atendimento categoria:Atendimento cargo:@Suporte registros:#registros-atendimento
+/atendimento painel
+/auto-moderacao filtros convites:true excesso-mensagens:true
+/auto-moderacao punicao acao:Apagar e castigar minutos:10
 ```
 
-Confira tudo com `/config ver` e `/automod ver`.
+Confira tudo com `/configurar ver` e `/auto-moderacao ver`.
 
 **Marcadores** aceitos nas mensagens de boas-vindas e saída: `{user}` (menção),
 `{username}`, `{tag}`, `{server}`, `{count}` (total de membros).
@@ -173,10 +174,10 @@ Na mensagem de nível: `{user}`, `{username}`, `{level}`, `{server}`.
 
 | Comando | O que faz |
 |---|---|
-| `/ban` | Bane um usuário, com opção de apagar as mensagens recentes dele |
-| `/unban` | Remove o banimento (com autocomplete da lista de banidos) |
-| `/kick` | Expulsa um membro |
-| `/castigo aplicar` · `/castigo remover` | Aplica ou remove timeout (até 28 dias) |
+| `/banir` | Bane um usuário, com opção de apagar as mensagens recentes dele |
+| `/desbanir` | Remove o banimento (com preenchimento automático da lista de banidos) |
+| `/expulsar` | Expulsa um membro |
+| `/castigo aplicar` · `/castigo remover` | Aplica ou remove um castigo temporário (até 28 dias) |
 | `/avisar` | Advertência. Aos 3, 5 e 7 avisos aplica castigo/expulsão automaticamente |
 | `/avisos listar` · `remover` · `limpar` | Gerencia as advertências de um membro |
 | `/limpar` | Apaga até 100 mensagens, com filtro por usuário, bots, anexos ou links |
@@ -189,32 +190,32 @@ Na mensagem de nível: `{user}`, `{username}`, `{level}`, `{server}`.
 
 | Comando | O que faz |
 |---|---|
-| `/config ver` | Mostra toda a configuração atual |
-| `/config logs` · `boasvindas` · `saida` · `autorole` | Canais e mensagens automáticas |
-| `/config niveis` · `recompensa` | Sistema de XP e cargos por nível |
-| `/config starboard` · `tickets` · `moeda` | Demais módulos |
-| `/automod ver` · `filtros` · `limites` · `punicao` · `palavras` · `ignorar` | Moderação automática |
-| `/painelcargos` | Publica um painel de cargos com botões |
+| `/configurar ver` | Mostra toda a configuração atual |
+| `/configurar registros` · `boas-vindas` · `saida` · `cargo-automatico` | Canais e mensagens automáticas |
+| `/configurar niveis` · `recompensa` | Sistema de XP e cargos por nível |
+| `/configurar destaques` · `atendimento` · `moeda` | Demais módulos |
+| `/auto-moderacao ver` · `filtros` · `limites` · `punicao` · `palavras` · `ignorar` | Moderação automática |
+| `/painel-cargos` | Publica um painel de cargos com botões |
 
 ### 🔧 Utilidades
 
-`/ajuda` · `/ping` · `/userinfo` · `/serverinfo` · `/avatar` · `/cargoinfo` · `/botinfo` ·
-`/lembrete criar|listar|cancelar` · `/enquete` · `/afk` · `/snipe` ·
+`/ajuda` · `/ping` · `/info-usuario` · `/info-servidor` · `/avatar` · `/info-cargo` · `/info-bot` ·
+`/lembrete criar|listar|cancelar` · `/enquete` · `/ausente` · `/apagada` ·
 `/sugestao enviar|decidir` · `/baixar`
 
 ### 💞 Social
 
-`/perfil` · `/bio` · `/rep dar|top` · `/casar` · `/divorciar`
+`/perfil` · `/biografia` · `/reputacao dar|ranking` · `/casar` · `/divorciar`
 
 ### 📈 Níveis e 🪙 Economia
 
-`/rank` · `/top niveis` · `/top moedas` · `/saldo` · `/daily` · `/trabalhar` · `/pagar` ·
+`/nivel` · `/ranking niveis` · `/ranking moedas` · `/saldo` · `/diario` · `/trabalhar` · `/pagar` ·
 `/apostar` · `/banco depositar|sacar` · `/roubar` · `/loja ver|comprar|inventario`
 
-### 🎫 Tickets, 🎉 Sorteios, 🎮 Jogos e 🎲 Diversão
+### 🎫 Atendimento, 🎉 Sorteios, 🎮 Jogos e 🎲 Sorteios aleatórios
 
-`/ticket abrir|fechar|adicionar|painel` · `/sorteio criar|encerrar|resortear` ·
-`/velha` · `/quiz` · `/bola8` · `/dado` · `/escolher` · `/ppt` · `/ship`
+`/atendimento abrir|fechar|adicionar|painel` · `/sorteio criar|encerrar|resortear` ·
+`/velha` · `/quiz` · `/dado` · `/escolher` · `/jokenpo` · `/ponderado` · `/amostra`
 
 ### 🏗️ Servidor
 
@@ -222,9 +223,9 @@ Na mensagem de nível: `{user}`, `{username}`, `{level}`, `{server}`.
 |---|---|
 | `/construir` | Monta categorias, canais e cargos a partir de um modelo pronto |
 
-Quatro modelos: **Hacking & Segurança**, **Comunidade**, **Gaming** e **Estudos**. O
+Quatro modelos: **Segurança e tecnologia**, **Comunidade**, **Jogos** e **Estudos**. O
 comando abre um painel com a prévia do que será criado e um menu para incluir ou não os
-cargos, os canais de voz e a área privada da staff. Nada é apagado — o construtor só
+cargos, os canais de voz e a área privada da equipe. Nada é apagado — o construtor só
 adiciona ao que já existe.
 
 Exige **Gerenciar Servidor** de quem usa e **Gerenciar Canais** do bot (mais
@@ -243,41 +244,44 @@ Exige **Gerenciar Servidor** de quem usa e **Gerenciar Canais** do bot (mais
 |---|---|---|
 | `/converter` | 25 | 13 famílias de unidades, bases numéricas, romanos, número por extenso |
 | `/matematica` | 21 | Expressões, estatística, primos, fatoração, juros, combinatória |
-| `/gerar` | 20 | Senhas, UUID, cores, paletas, gradientes, lorem, tabelas, barras |
+| `/gerar` | 20 | Senhas, UUID, cores, dados de teste, README, changelog, curl e arquivos auxiliares |
 | `/tempo` | 18 | Fusos, contagens, idade, dias úteis, progresso do ano, timestamps |
+| `/planejar` | 25 | Pautas, atas, decisões, riscos, prioridades, capacidade e comunicação |
+
+Também há `/estimativa` para cálculo PERT e `/avaliar-opcoes` para comparação ponderada
+com critérios, notas e pesos definidos por quem usa.
 
 O avaliador de expressões do `/matematica calcular` é escrito à mão, sem `eval`: só
 números e os operadores `+ - * / % ^ ( )` são reconhecidos. Uma string vinda do Discord
 nunca chega perto do interpretador.
 
-### 🎲 Mais diversão e jogos
+### 🎲 Mais jogos e sorteios
 
 | Comando | Subcomandos | O que faz |
 |---|---|---|
-| `/aleatorio` | 25 | Sorteios, dados `NdL`, cartas, times, roleta — tudo com `crypto.randomInt` |
-| `/brincadeira` | 25 | Medidores, ações entre membros, previsões, rankings |
-| `/jogo` | 25 | Anagramas, enigmas, sequências, quiz — resposta em spoiler |
+| `/aleatorio` | 25 | Sorteios ponderados, amostras, chaveamentos, distribuições e dados de teste |
+| `/jogo` | 25 | Anagramas, lógica, sudoku, criptogramas e jogos de palavras — resposta em spoiler |
 
 Os jogos não guardam estado: a resposta vai escondida num `||spoiler||`, então cada
 partida cabe numa mensagem só, sem tabela, expiração nem limpeza.
 
 ### 🪙 Mais economia e área pessoal
 
-| Comando | Subcomandos | O que faz |
+| Comando | Rotas no conjunto | O que faz |
 |---|---|---|
-| `/bolso` | 25 | Trabalhos, crime, apostas, caça-níquel, investimentos, ranking |
+| `/bolso` | 24 | Apostas com moeda virtual, rodada de mercado e estatísticas patrimoniais |
 | `/pessoal` | 25 | Anotações, tarefas, metas, guardados e aniversários — sempre privados |
 
-Os cooldowns do `/bolso` ficam na tabela `acoes`, não em memória: com cooldown em
-memória bastaria esperar o bot reiniciar para repetir a ação.
+O tempo de espera da rodada de mercado fica na tabela `acoes`, não em memória. Reiniciar
+o bot não libera uma nova rodada antes da hora.
 
 ### 🏗️ Servidor
 
 | Comando | Subcomandos | O que faz |
 |---|---|---|
 | `/construir` | — | Monta o servidor a partir de um modelo pronto |
-| `/servidor` | 25 | Resumo, cargos, canais, emojis, impulsos, banidos, permissões |
-| `/mod` | 25 | Trancar canais, limpezas filtradas, cargos em massa, auditoria |
+| `/servidor` | 25 | Proprietário, cargos, canais, emojis, impulsos, banidos e permissões |
+| `/moderacao` | 25 | Limpezas filtradas, cargos em massa, canais de voz e auditoria |
 
 ### 👑 Dono do bot
 
@@ -308,11 +312,11 @@ WARN  Acesso negado: fulano (123…) tentou /dono em Servidor X (456…).
 |---|---|
 | `/dono servidores` | Lista todos os servidores em que o bot está, com IDs |
 | `/dono sair` | Faz o bot sair de um servidor pelo ID |
-| `/dono deploy` | Registra os comandos: global, só neste servidor, ou limpa |
+| `/dono registrar` | Atualiza os comandos globais e limpa registros antigos por servidor |
 | `/dono convite` | Gera o link para adicionar o bot em servidores ilimitados |
 | `/dono moedas` | Cria ou remove moedas de alguém |
 | `/dono nivel` | Define o nível de alguém |
-| `/dono stats` | Servidores, membros, memória e ping somando todos os shards |
+| `/dono estatisticas` | Servidores, membros, memória e latência somando todos os processos |
 
 Donos também **não pegam cooldown** em nenhum comando.
 
@@ -356,12 +360,12 @@ O Discord aceita no **máximo 100 comandos de barra por aplicação**. Não é l
 bot: passar disso faz o registro inteiro ser recusado e o bot fica com **zero** comandos.
 
 O projeto usa exatamente esse teto: **100 comandos de topo**, e os outros 300 vivem como
-subcomandos deles — `/texto maiusculas`, `/bolso apostar-moeda`. O autocomplete do Discord
+subcomandos deles — `/texto titulo`, `/bolso comparar-patrimonio`. O preenchimento automático do Discord
 acha qualquer um pelo nome.
 
 Os mais usados são promovidos a comando próprio: uma família declara
-`atalhos: ['minerar', 'pescar']` e esses subcomandos **saem** dela para virar `/minerar` e
-`/pescar`. Saem mesmo — manter os dois caminhos faria o mesmo trabalho aparecer duas vezes
+`atalhos: ['senha', 'uuid']` e esses subcomandos **saem** dela para virar `/senha` e
+`/uuid`. Saem mesmo — manter os dois caminhos faria o mesmo trabalho aparecer duas vezes
 na lista e contar duas vezes no total.
 
 > Existe um teto maior e pouco conhecido: além dos 100 globais, dá para registrar outros
@@ -416,10 +420,10 @@ servidor cai **sempre** no mesmo shard.
 | Opções do Client | O discord.js **não** lê `SHARDS`/`SHARD_COUNT` do ambiente sozinho — `shardCount` tem padrão `1`. Todo processo se conectaria como "shard 0 de 1" e receberia **todos** os servidores, duplicando XP, punições e eventos | `src/index.js` repassa as duas variáveis explicitamente |
 | Agendador | Todo processo roda o laço de lembretes/sorteios/enquetes. Com 8 shards, o mesmo sorteio seria encerrado 8 vezes | Cada item é filtrado por `ownsGuild()`; lembretes de DM (sem servidor) ficam com o shard 0, para ter exatamente um dono |
 | SQLite | Vários processos escrevendo no mesmo arquivo esbarram em `SQLITE_BUSY` | WAL + `busy_timeout = 5000` + `synchronous = NORMAL` |
-| Contadores | `client.guilds.cache.size` é só a fatia local, então `/botinfo` e a presença mostrariam números errados | `broadcastEval` soma entre shards; se algum ainda não respondeu, cai para o número local e marca como *(parcial)* |
-| Logs | Vários processos escrevendo no mesmo terminal | Prefixo `[shard N]` em cada linha |
+| Contadores | `client.guilds.cache.size` é só a fatia local, então `/info-bot` e a presença mostrariam números errados | `broadcastEval` soma entre processos; se algum ainda não respondeu, cai para o número local e marca como *(parcial)* |
+| Registros | Vários processos escrevendo no mesmo terminal | Prefixo `[shard N]` em cada linha |
 
-**O que continua por processo, de propósito:** o estado das partidas, o `/snipe`, o
+**O que continua por processo, de propósito:** o estado das partidas, o `/apagada`, o
 histórico do antispam e os cooldowns. Como um servidor mora sempre no mesmo shard, isso
 funciona — a única consequência é que o cooldown de um comando é contado por shard, o
 que só aparece para quem usa o bot em servidores de shards diferentes.
@@ -547,7 +551,7 @@ Colunas adicionadas depois da primeira versão entram por migração automática
 atualizar o bot sem recriar o banco.
 
 Duas coisas ficam **só em memória**, de propósito: o estado das partidas de
-`/velha` e `/quiz` (efêmero por natureza) e o `/snipe`, porque conteúdo apagado é
+`/velha` e `/quiz` (efêmero por natureza) e o `/apagada`, porque conteúdo apagado é
 sensível e não deve sobreviver a um reinício nem ir para o disco — ele também expira
 em 10 minutos.
 
@@ -561,15 +565,15 @@ em 10 minutos.
 |---|---|
 | Os comandos não aparecem | Faltou `npm run deploy`. Sem `GUILD_ID` o registro é global e leva até 1 hora |
 | "Não tenho permissão para banir/expulsar" | O cargo do bot está abaixo do cargo do alvo. Mova o cargo do bot para cima |
-| Níveis e AutoMod não funcionam | **Message Content Intent** desativado no Portal do Desenvolvedor |
+| Níveis e moderação automática não funcionam | **Message Content Intent** desativado no Portal do Desenvolvedor |
 | Boas-vindas e autorole não funcionam | **Server Members Intent** desativado |
-| Starboard não posta | O bot precisa ver o canal de origem, ter histórico de mensagens e permissão de envio no canal do mural |
+| O mural de destaques não publica | O bot precisa ver o canal de origem, ter histórico de mensagens e permissão de envio no canal do mural |
 | `/ia` diz que não está configurado | Falta `ANTHROPIC_API_KEY` no `.env` |
 | `/baixar` diz que não está disponível | `yt-dlp` não está no PATH do processo do bot |
 | `/baixar` reclama de tamanho | O vídeo passou do teto de upload do servidor. Use `audio: true` ou aumente o nível de impulso |
-| Comandos personalizados não respondem | O prefixo mudou (veja `/config ver`) ou falta a **Message Content Intent** |
+| Comandos personalizados não respondem | O prefixo mudou (veja `/configurar ver`) ou falta a **Message Content Intent** |
 | Sorteio encerrado várias vezes | Sinal de shards recebendo os mesmos servidores — confira se `SHARDS`/`SHARD_COUNT` não foram definidos à mão no `.env` (essas variáveis pertencem ao discord.js; a sua é `SHARDING`) |
-| `/botinfo` mostra *(parcial)* | Algum shard ainda estava iniciando quando o comando rodou. Tente de novo em alguns segundos |
+| `/info-bot` mostra *(parcial)* | Algum processo ainda estava iniciando quando o comando rodou. Tente de novo em alguns segundos |
 | Erro ao instalar `better-sqlite3` | Node abaixo da versão 20, ou faltam ferramentas de compilação para o *build* nativo |
 
 ---

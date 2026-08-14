@@ -11,13 +11,14 @@ import {
 import { db } from '../../lib/db.js';
 import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
+import { quantidade } from '../../lib/portugues.js';
 
 const MAX_ROLES = 5;
 
 export default {
   cooldown: 10,
   data: new SlashCommandBuilder()
-    .setName('painelcargos')
+    .setName('painel-cargos')
     .setDescription('Publica um painel onde os membros pegam cargos clicando em botões.')
     .addRoleOption((option) =>
       option.setName('cargo1').setDescription('Primeiro cargo').setRequired(true),
@@ -96,7 +97,7 @@ export default {
 
     await interaction.reply({
       embeds: [
-        embed.success(`Painel com **${unique.length}** cargo(s) publicado em ${channel}.`),
+        embed.success(`Painel com **${quantidade(unique.length, 'cargo')}** publicado em ${channel}.`),
       ],
       flags: MessageFlags.Ephemeral,
     });

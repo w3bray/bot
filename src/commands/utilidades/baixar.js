@@ -3,6 +3,7 @@ import { AttachmentBuilder, InteractionContextType, SlashCommandBuilder } from '
 import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { formatDuration } from '../../lib/time.js';
+import { quantidade } from '../../lib/portugues.js';
 import {
   DOWNLOAD_MODES,
   download,
@@ -45,11 +46,6 @@ export default {
           { name: 'Somente imagens/carrossel', value: DOWNLOAD_MODES.IMAGES },
         ),
     )
-    .addBooleanOption((option) =>
-      option
-        .setName('audio')
-        .setDescription('Compatibilidade antiga: equivale a tipo Somente áudio'),
-    )
     .setContexts(InteractionContextType.Guild),
 
   async execute(interaction) {
@@ -60,10 +56,7 @@ export default {
       return replyError(interaction, error.message);
     }
 
-    const legacyAudio = interaction.options.getBoolean('audio') ?? false;
-    const mode = legacyAudio
-      ? DOWNLOAD_MODES.AUDIO
-      : (interaction.options.getString('tipo') ?? DOWNLOAD_MODES.ALL);
+    const mode = interaction.options.getString('tipo') ?? DOWNLOAD_MODES.ALL;
     const maxBytes = uploadLimitFor(interaction);
 
     await interaction.deferReply();
@@ -105,7 +98,7 @@ export default {
         await interaction.editReply({
           embeds: [
             embed.info(
-              `${oversized} arquivo(s) ultrapassam o teto de anexo do Discord. ` +
+              `${quantidade(oversized, 'arquivo')} ${oversized === 1 ? 'ultrapassa' : 'ultrapassam'} o teto de anexo do Discord. ` +
                 'Dividindo apenas para transporte, sem reduzir qualidade…',
             ),
           ],
@@ -198,7 +191,7 @@ export default {
           {
             name: 'Entrega',
             value:
-              `${result.assets.length} arquivo(s) original(is) em ${prepared.length} anexo(s). ` +
+              `${quantidade(result.assets.length, 'arquivo original', 'arquivos originais')} em ${quantidade(prepared.length, 'anexo')}. ` +
               `Cada anexo respeita ${(maxBytes / 1024 / 1024).toFixed(0)} MB.`,
           },
           ...(info.uploader ? [{ name: 'Autor', value: info.uploader, inline: true }] : []),

@@ -3,12 +3,13 @@ import { getGuildConfig } from '../../lib/db.js';
 import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { formatMoney, getAccount } from '../../services/economy.js';
+import { quantidade } from '../../lib/portugues.js';
 
 export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
     .setName('saldo')
-    .setDescription('Mostra quantas moedas você (ou outra pessoa) tem.')
+    .setDescription('Mostra o saldo de moedas seu ou de outro membro.')
     .addUserOption((option) =>
       option.setName('usuario').setDescription('De quem? (padrão: você)'),
     )
@@ -40,11 +41,11 @@ export default {
             },
             {
               name: '🔥 Sequência diária',
-              value: `${account.streak} dia(s)`,
+              value: quantidade(account.streak, 'dia'),
               inline: true,
             },
           )
-          .setFooter({ text: 'Use /daily todo dia para aumentar sua sequência.' }),
+          .setFooter({ text: 'Use /diario todos os dias para aumentar sua sequência.' }),
       ],
     });
   },

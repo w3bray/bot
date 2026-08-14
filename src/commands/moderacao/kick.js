@@ -6,7 +6,7 @@ import { createCase, notifyUser } from '../../services/modcase.js';
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('kick')
+    .setName('expulsar')
     .setDescription('Expulsa um membro do servidor.')
     .addUserOption((option) =>
       option.setName('usuario').setDescription('Quem será expulso').setRequired(true),

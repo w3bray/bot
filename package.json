@@ -1,7 +1,7 @@
 {
   "name": "bot",
   "version": "1.0.0",
-  "description": "Bot de Discord multiuso: moderação, automod, níveis, economia, tickets, sorteios, logs, starboard e IA.",
+  "description": "Bot de Discord multiuso em português: moderação, níveis, economia, atendimento, sorteios, registros, destaques e IA.",
   "type": "module",
   "main": "src/index.js",
   "engines": {
@@ -13,7 +13,8 @@
     "dev": "node --watch src/index.js",
     "deploy": "node scripts/deploy-commands.js",
     "deploy:global": "node scripts/deploy-commands.js --global",
-    "clear": "node scripts/deploy-commands.js --clear"
+    "clear": "node scripts/deploy-commands.js --clear",
+    "audit:commands": "node scripts/audit-commands.js"
   },
   "keywords": [
     "discord",
