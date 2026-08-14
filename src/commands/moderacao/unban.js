@@ -5,7 +5,7 @@ import { createCase } from '../../services/modcase.js';
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('unban')
+    .setName('desbanir')
     .setDescription('Remove o banimento de um usuário.')
     .addStringOption((option) =>
       option

@@ -19,11 +19,11 @@ export default {
 async function runCommand(interaction, client) {
   const command = client.commands.get(interaction.commandName);
   if (!command) {
-    return replyError(interaction, 'Esse comando não existe mais. Tente novamente em instantes.');
+    return replyError(interaction, 'Esse comando mudou ou foi removido. Digite `/ajuda` para ver a lista atual.');
   }
 
   if (command.guildOnly !== false && !interaction.inGuild()) {
-    return replyError(interaction, 'Este comando só funciona dentro de um servidor.');
+    return replyError(interaction, 'Esse comando só funciona dentro de servidores.');
   }
 
   const owner = isOwner(interaction.user.id);
@@ -34,7 +34,7 @@ async function runCommand(interaction, client) {
       `Acesso negado: ${interaction.user.tag} (${interaction.user.id}) tentou /${interaction.commandName}` +
         `${interaction.guild ? ` em ${interaction.guild.name} (${interaction.guildId})` : ' na DM'}.`,
     );
-    return replyError(interaction, 'Apenas os donos do bot podem usar este comando.');
+    return replyError(interaction, 'Só os donos do bot podem usar esse comando.');
   }
 
   // Donos não pegam cooldown: é o que o .env.example promete e o que torna os
@@ -44,7 +44,7 @@ async function runCommand(interaction, client) {
     if (remaining > 0) {
       return replyError(
         interaction,
-        `Calma lá! Tente novamente em **${formatDuration(remaining)}**.`,
+        `Espere **${formatDuration(remaining)}** antes de usar esse comando de novo.`,
       );
     }
   }
@@ -55,7 +55,7 @@ async function runCommand(interaction, client) {
     logger.error(`Erro no comando /${interaction.commandName}:`, error);
     await replyError(
       interaction,
-      'Algo deu errado ao executar este comando. A equipe do bot foi notificada.',
+      'Não consegui concluir esse comando. Tente novamente; se continuar acontecendo, avise um administrador.',
     );
   }
 }
@@ -86,7 +86,7 @@ async function runComponent(interaction, client) {
   if (!handler) {
     return interaction
       .reply({
-        embeds: [embed.error('Este botão pertence a uma versão antiga do bot e não funciona mais.')],
+        embeds: [embed.error('Esse botão é antigo e já venceu. Rode o comando novamente para abrir a versão atual.')],
         flags: MessageFlags.Ephemeral,
       })
       .catch(() => null);
@@ -96,6 +96,6 @@ async function runComponent(interaction, client) {
     await handler.execute(interaction, { action, args, client });
   } catch (error) {
     logger.error(`Erro no componente "${interaction.customId}":`, error);
-    await replyError(interaction, 'Não consegui processar essa ação.');
+    await replyError(interaction, 'Não consegui concluir essa ação. Tente novamente.');
   }
 }

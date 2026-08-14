@@ -13,7 +13,7 @@ const KEYS = Object.keys(CHOICES);
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('ppt')
+    .setName('jokenpo')
     .setDescription('Joga pedra, papel ou tesoura contra o bot.')
     .addStringOption((option) =>
       option

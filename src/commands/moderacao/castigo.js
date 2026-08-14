@@ -11,7 +11,7 @@ export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
     .setName('castigo')
-    .setDescription('Aplica ou remove o castigo (timeout) de um membro.')
+    .setDescription('Aplica ou remove o castigo temporário de um membro.')
     .addSubcommand((sub) =>
       sub
         .setName('aplicar')

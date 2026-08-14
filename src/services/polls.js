@@ -4,6 +4,7 @@ import { colors } from '../config.js';
 import { embed } from '../lib/embeds.js';
 import { timestamp } from '../lib/time.js';
 import { logger } from '../lib/logger.js';
+import { quantidade } from '../lib/portugues.js';
 
 export const OPTION_EMOJIS = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
 
@@ -42,11 +43,11 @@ export function pollEmbed(poll, { closed = false } = {}) {
     const percent = totalVotes === 0 ? 0 : Math.round((votes / totalVotes) * 100);
     const filled = Math.round(percent / 5);
     const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
-    return `${OPTION_EMOJIS[index]} **${option}**\n\`${bar}\` ${percent}% · ${votes} voto(s)`;
+    return `${OPTION_EMOJIS[index]} **${option}**\n\`${bar}\` ${percent}% · ${quantidade(votes, 'voto')}`;
   });
 
   const footer = [
-    `${voters} pessoa(s) votaram`,
+    `${quantidade(voters, 'pessoa')} ${voters === 1 ? 'votou' : 'votaram'}`,
     poll.multi ? 'múltipla escolha' : 'escolha única',
   ].join(' · ');
 

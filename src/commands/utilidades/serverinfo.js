@@ -2,13 +2,37 @@ import { ChannelType, InteractionContextType, SlashCommandBuilder } from 'discor
 import { colors } from '../../config.js';
 import { embed, truncate } from '../../lib/embeds.js';
 import { timestamp } from '../../lib/time.js';
+import { quantidade } from '../../lib/portugues.js';
 
 const VERIFICATION = ['nenhuma', 'baixa', 'média', 'alta', 'muito alta'];
+
+const RECURSOS = {
+  ANIMATED_BANNER: 'banner animado',
+  ANIMATED_ICON: 'ícone animado',
+  AUTO_MODERATION: 'moderação automática',
+  BANNER: 'banner',
+  COMMUNITY: 'comunidade',
+  CREATOR_MONETIZABLE_PROVISIONAL: 'monetização para criadores',
+  CREATOR_STORE_PAGE: 'página da loja do criador',
+  DISCOVERABLE: 'descoberta pública',
+  FEATURABLE: 'destaque público',
+  INVITES_DISABLED: 'convites desativados',
+  MEMBER_VERIFICATION_GATE_ENABLED: 'verificação de membros',
+  MORE_SOUNDBOARD: 'mais sons no painel',
+  NEWS: 'canais de anúncios',
+  PARTNERED: 'servidor parceiro',
+  PREVIEW_ENABLED: 'prévia pública',
+  ROLE_ICONS: 'ícones de cargos',
+  SOUNDBOARD: 'painel de sons',
+  VANITY_URL: 'link personalizado',
+  VERIFIED: 'servidor verificado',
+  VIP_REGIONS: 'regiões de voz VIP',
+};
 
 export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
-    .setName('serverinfo')
+    .setName('info-servidor')
     .setDescription('Mostra informações sobre este servidor.')
     .setContexts(InteractionContextType.Guild),
 
@@ -24,7 +48,11 @@ export default {
       .setTitle(guild.name)
       .setThumbnail(guild.iconURL({ size: 256 }))
       .addFields(
-        { name: 'Dono', value: owner ? `${owner.user.tag}` : 'desconhecido', inline: true },
+        {
+          name: 'Proprietário',
+          value: owner ? `${owner.user.tag}` : 'Desconhecido',
+          inline: true,
+        },
         { name: 'ID', value: `\`${guild.id}\``, inline: true },
         { name: 'Criado em', value: timestamp(guild.createdAt, 'D'), inline: true },
         {
@@ -46,12 +74,12 @@ export default {
         },
         {
           name: 'Impulsos',
-          value: `Nível ${guild.premiumTier} · ${guild.premiumSubscriptionCount ?? 0} impulso(s)`,
+          value: `Nível ${guild.premiumTier} · ${quantidade(guild.premiumSubscriptionCount ?? 0, 'impulso')}`,
           inline: true,
         },
         {
           name: 'Verificação',
-          value: VERIFICATION[guild.verificationLevel] ?? 'desconhecida',
+          value: VERIFICATION[guild.verificationLevel] ?? 'Desconhecida',
           inline: true,
         },
       );
@@ -63,7 +91,9 @@ export default {
       info.addFields({
         name: 'Recursos',
         value: truncate(
-          guild.features.map((feature) => `\`${feature.toLowerCase()}\``).join(', '),
+          guild.features
+            .map((feature) => `\`${RECURSOS[feature] ?? feature.toLowerCase().replaceAll('_', ' ')}\``)
+            .join(', '),
         ),
       });
     }

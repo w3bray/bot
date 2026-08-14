@@ -7,7 +7,7 @@ import { getTopReputation, giveReputation } from '../../services/profiles.js';
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('rep')
+    .setName('reputacao')
     .setDescription('Dá um ponto de reputação para alguém (uma vez a cada 12 horas).')
     .addSubcommand((sub) =>
       sub
@@ -17,11 +17,13 @@ export default {
           option.setName('usuario').setDescription('Quem merece?').setRequired(true),
         ),
     )
-    .addSubcommand((sub) => sub.setName('top').setDescription('Ranking de reputação do servidor.'))
+    .addSubcommand((sub) =>
+      sub.setName('ranking').setDescription('Mostra o ranking de reputação do servidor.'),
+    )
     .setContexts(InteractionContextType.Guild),
 
   async execute(interaction) {
-    if (interaction.options.getSubcommand() === 'top') return showTop(interaction);
+    if (interaction.options.getSubcommand() === 'ranking') return showTop(interaction);
 
     const target = interaction.options.getUser('usuario');
 
@@ -42,7 +44,7 @@ export default {
     await interaction.reply({
       embeds: [
         embed.success(
-          `${interaction.user} deu +1 de reputação para ${target}!\nAgora ${target} tem **${result.total}** ponto(s).`,
+          `${interaction.user} deu +1 de reputação para ${target}!\nAgora ${target} tem **${result.total} ${result.total === 1 ? 'ponto' : 'pontos'}**.`,
         ),
       ],
     });
@@ -54,7 +56,7 @@ async function showTop(interaction) {
 
   if (rows.length === 0) {
     return interaction.reply({
-      embeds: [embed.info('Ninguém recebeu reputação ainda. Use `/rep dar` para começar.')],
+      embeds: [embed.info('Ninguém recebeu reputação ainda. Use `/reputacao dar` para começar.')],
     });
   }
 
@@ -63,7 +65,7 @@ async function showTop(interaction) {
     rows.map(async (row, index) => {
       const user = await interaction.client.users.fetch(row.user_id).catch(() => null);
       const prefix = medals[index] ?? `\`#${String(index + 1).padStart(2, ' ')}\``;
-      return `${prefix} **${user ? user.tag : row.user_id}** — ${row.reputation} ponto(s)`;
+      return `${prefix} **${user ? user.tag : row.user_id}** — ${row.reputation} ${row.reputation === 1 ? 'ponto' : 'pontos'}`;
     }),
   );
 

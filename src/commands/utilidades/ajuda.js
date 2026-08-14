@@ -6,7 +6,7 @@ import { rotasDoComando } from '../../lib/rotas.js';
 
 const CATEGORIES = {
   moderacao: { label: '🛡️ Moderação', order: 1 },
-  automod: { label: '🤖 AutoMod', order: 2 },
+  automod: { label: '🤖 Moderação automática', order: 2 },
   configuracao: { label: '⚙️ Configuração', order: 3 },
   servidor: { label: '🏗️ Servidor', order: 4 },
   texto: { label: '✍️ Texto e código', order: 5 },
@@ -15,9 +15,9 @@ const CATEGORIES = {
   niveis: { label: '📈 Níveis', order: 8 },
   economia: { label: '🪙 Economia', order: 9 },
   jogos: { label: '🎮 Jogos', order: 10 },
-  diversao: { label: '🎲 Diversão', order: 11 },
+  diversao: { label: '🎲 Sorteios e lazer', order: 11 },
   sorteios: { label: '🎉 Sorteios', order: 12 },
-  tickets: { label: '🎫 Tickets', order: 13 },
+  tickets: { label: '🎫 Atendimento', order: 13 },
   ia: { label: '🧠 Inteligência Artificial', order: 14 },
   dono: { label: '👑 Dono do bot', order: 15 },
 };

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { aviso, bloco, familia, opt } from '../../lib/familia.js';
 import { colors } from '../../config.js';
 import { embed } from '../../lib/embeds.js';
+import { quantidade as qtd } from '../../lib/portugues.js';
 
 /** Sorteio criptográfico: sem viés de módulo, ao contrário de Math.random(). */
 const sortear = (max) => crypto.randomInt(max);
@@ -31,8 +32,8 @@ const CARTAS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
 export default familia({
   name: 'aleatorio',
   // Promovidos a comando de topo: saem da família e viram /nome direto.
-  atalhos: ['moeda', 'roleta', 'carta'],
-  description: 'Sorteios, dados, cartas e escolhas ao acaso.',
+  atalhos: ['ponderado', 'amostra', 'decimal'],
+  description: 'Faz sorteios, amostragens e distribuições aleatórias.',
   cooldown: 3,
   subs: [
     {
@@ -48,10 +49,21 @@ export default familia({
       },
     },
     {
-      name: 'escolher',
-      description: 'Escolhe um item da sua lista.',
+      name: 'chaveamento',
+      description: 'Embaralha os nomes e monta confrontos em duplas.',
       options: [OPCOES],
-      run: ({ opcoes }) => `Escolhi: **${escolher(itens(opcoes))}**`,
+      run: ({ opcoes }) => {
+        const nomes = embaralhar(itens(opcoes));
+        const confrontos = [];
+        for (let i = 0; i < nomes.length; i += 2) {
+          confrontos.push(
+            nomes[i + 1]
+              ? `**${confrontos.length + 1}.** ${nomes[i]} × ${nomes[i + 1]}`
+              : `**${confrontos.length + 1}.** ${nomes[i]} avança sem adversário`,
+          );
+        }
+        return `🏆 **Chaveamento sorteado**\n\n${confrontos.join('\n')}`;
+      },
     },
     {
       name: 'escolher-varios',
@@ -84,9 +96,28 @@ export default familia({
       },
     },
     {
-      name: 'moeda',
-      description: 'Cara ou coroa.',
-      run: () => (sortear(2) ? '🪙 **Cara!**' : '🪙 **Coroa!**'),
+      name: 'ponderado',
+      description: 'Sorteia uma opção respeitando os pesos informados.',
+      options: [opt.texto('opcoes', 'Use nome:peso e separe as opções por ponto e vírgula', true, { max: 1500 })],
+      run: ({ opcoes }) => {
+        const entradas = opcoes.split(/[;\n]+/).map((entrada) => {
+          const separador = entrada.lastIndexOf(':');
+          const nome = entrada.slice(0, separador).trim();
+          const peso = Number(entrada.slice(separador + 1).trim().replace(',', '.'));
+          if (separador < 1 || !nome || Number.isFinite(peso) === false || peso <= 0) {
+            throw aviso('Use o formato `opção:peso`; exemplo: A:3; B:1.');
+          }
+          return { nome, peso };
+        });
+        if (entradas.length < 2 || entradas.length > 30) throw aviso('Informe de 2 a 30 opções.');
+        const total = entradas.reduce((soma, entrada) => soma + entrada.peso, 0);
+        let ponto = ((sortear(1_000_000) + 0.5) / 1_000_000) * total;
+        const escolhida = entradas.find((entrada) => {
+          ponto -= entrada.peso;
+          return ponto <= 0;
+        }) ?? entradas.at(-1);
+        return `**Opção sorteada:** ${escolhida.nome}\n**Peso:** ${escolhida.peso.toLocaleString('pt-BR')}/${total.toLocaleString('pt-BR')}`;
+      },
     },
     {
       name: 'moedas',
@@ -99,29 +130,38 @@ export default familia({
           if (cara) caras += 1;
           return cara ? '🔵' : '⚪';
         });
-        return `${seq.join('')}\n\n**${caras}** cara(s) · **${quantidade - caras}** coroa(s)`;
+        return `${seq.join('')}\n\n**${qtd(caras, 'cara')}** · **${qtd(quantidade - caras, 'coroa')}**`;
       },
     },
     {
-      name: 'dado',
-      description: 'Rola dados no formato 2d6, 1d20…',
-      options: [opt.texto('formato', 'Ex.: 2d6, 1d20, 4d10', true, { max: 20 })],
-      run: ({ formato }) => {
-        const partida = /^(\d{1,2})?d(\d{1,3})$/i.exec(formato.trim());
-        if (!partida) throw aviso('Use o formato `NdL`, como `2d6` ou `1d20`.');
-        const quantos = Number(partida[1] ?? 1);
-        const lados = Number(partida[2]);
-        if (quantos < 1 || quantos > 50) throw aviso('De 1 a 50 dados.');
-        if (lados < 2 || lados > 1000) throw aviso('O dado precisa ter de 2 a 1000 lados.');
-        const rolagens = Array.from({ length: quantos }, () => sortear(lados) + 1);
-        const soma = rolagens.reduce((a, b) => a + b, 0);
-        return `🎲 \`${formato.trim()}\`\n${rolagens.join(' + ')}${quantos > 1 ? `\n\n**Total: ${soma}**` : `\n\n**${soma}**`}`;
+      name: 'bingo',
+      description: 'Sorteia números de bingo sem repetir.',
+      options: [
+        opt.inteiro('quantidade', 'Quantos números sortear', true, { min: 1, max: 50 }),
+        opt.inteiro('maximo', 'Maior número possível', false, { min: 2, max: 1000 }),
+      ],
+      run: ({ quantidade, maximo }) => {
+        const limite = maximo ?? 75;
+        if (quantidade > limite) throw aviso(`Não dá para tirar ${quantidade} números diferentes de 1 a ${limite}.`);
+        const numeros = embaralhar(Array.from({ length: limite }, (_, i) => i + 1))
+          .slice(0, quantidade)
+          .sort((a, b) => a - b);
+        return `🎱 **Números sorteados**\n\n${numeros.map((n) => `\`${n}\``).join(' ')}`;
       },
     },
     {
-      name: 'carta',
-      description: 'Tira uma carta do baralho.',
-      run: () => `🃏 **${escolher(CARTAS)}${escolher(NAIPES)}**`,
+      name: 'amostra',
+      description: 'Sorteia uma amostra com reposição, permitindo resultados repetidos.',
+      options: [
+        OPCOES,
+        opt.inteiro('quantidade', 'Tamanho da amostra', true, { min: 1, max: 100 }),
+      ],
+      run: ({ opcoes, quantidade }) => {
+        const populacao = itens(opcoes);
+        return Array.from({ length: quantidade }, (_, indice) =>
+          `**${indice + 1}.** ${escolher(populacao)}`,
+        ).join('\n');
+      },
     },
     {
       name: 'maos',
@@ -139,13 +179,19 @@ export default familia({
       },
     },
     {
-      name: 'roleta',
-      description: 'Gira a roleta e sorteia um número de 0 a 36.',
-      run: () => {
-        const numero = sortear(37);
-        const vermelhos = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-        const cor = numero === 0 ? '🟢 verde' : vermelhos.includes(numero) ? '🔴 vermelho' : '⚫ preto';
-        return `🎡 Caiu no **${numero}** — ${cor}${numero === 0 ? '' : `, ${numero % 2 ? 'ímpar' : 'par'}`}`;
+      name: 'decimal',
+      description: 'Sorteia um número decimal dentro de um intervalo.',
+      options: [
+        opt.numero('minimo', 'Menor valor', true, { min: -1_000_000_000, max: 1_000_000_000 }),
+        opt.numero('maximo', 'Maior valor', true, { min: -1_000_000_000, max: 1_000_000_000 }),
+        opt.inteiro('casas', 'Casas decimais; padrão 2', false, { min: 0, max: 8 }),
+      ],
+      run: ({ minimo, maximo, casas }) => {
+        if (minimo >= maximo) throw aviso('O mínimo precisa ser menor que o máximo.');
+        const precisao = casas ?? 2;
+        const proporcao = (sortear(1_000_000_000) + 0.5) / 1_000_000_000;
+        const valor = minimo + proporcao * (maximo - minimo);
+        return `**${valor.toLocaleString('pt-BR', { minimumFractionDigits: precisao, maximumFractionDigits: precisao })}**`;
       },
     },
     {
@@ -214,18 +260,37 @@ export default familia({
       },
     },
     {
-      name: 'ppt',
-      description: 'Pedra, papel ou tesoura sozinho.',
-      run: () => `✊✋✌️ Saiu **${escolher(['pedra ✊', 'papel ✋', 'tesoura ✌️'])}**`,
+      name: 'placar',
+      description: 'Sorteia um placar entre dois times.',
+      options: [
+        opt.texto('mandante', 'Nome do primeiro time', true, { max: 80 }),
+        opt.texto('visitante', 'Nome do segundo time', true, { max: 80 }),
+        opt.inteiro('maximo', 'Máximo de pontos por time', false, { min: 1, max: 20 }),
+      ],
+      run: ({ mandante, visitante, maximo }) => {
+        const teto = maximo ?? 5;
+        return `🏟️ **${mandante} ${sortear(teto + 1)} × ${sortear(teto + 1)} ${visitante}**`;
+      },
     },
     {
-      name: 'ordem-fila',
-      description: 'Sorteia a ordem de uma fila de nomes.',
-      options: [OPCOES],
-      run: ({ opcoes }) =>
-        embaralhar(itens(opcoes))
-          .map((nome, i) => `${['🥇', '🥈', '🥉'][i] ?? `**${i + 1}.**`} ${nome}`)
-          .join('\n'),
+      name: 'distribuicao-normal',
+      description: 'Gera valores aproximados de uma distribuição normal.',
+      options: [
+        opt.numero('media', 'Média desejada', true, { min: -1_000_000, max: 1_000_000 }),
+        opt.numero('desvio', 'Desvio padrão, maior que zero', true, { min: 0.0001, max: 1_000_000 }),
+        opt.inteiro('quantidade', 'Quantidade de valores', true, { min: 1, max: 50 }),
+        opt.inteiro('casas', 'Casas decimais; padrão 2', false, { min: 0, max: 6 }),
+      ],
+      run: ({ media, desvio, quantidade, casas }) => {
+        const precisao = casas ?? 2;
+        const valores = Array.from({ length: quantidade }, () => {
+          const u1 = (sortear(1_000_000) + 1) / 1_000_001;
+          const u2 = (sortear(1_000_000) + 1) / 1_000_001;
+          const normal = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+          return media + normal * desvio;
+        });
+        return bloco(valores.map((valor) => valor.toFixed(precisao)).join('\n'));
+      },
     },
     {
       name: 'par-ou-impar',
@@ -253,36 +318,62 @@ export default familia({
       }),
     },
     {
-      name: 'cor',
-      description: 'Sorteia uma cor e mostra o código dela.',
-      run: () => {
-        const valor = sortear(0xffffff + 1);
-        const hex = `#${valor.toString(16).padStart(6, '0').toUpperCase()}`;
-        return {
-          embeds: [
-            embed
-              .base(valor)
-              .setTitle(hex)
-              .setDescription(`RGB: \`${(valor >> 16) & 255}, ${(valor >> 8) & 255}, ${valor & 255}\``)
-              .setThumbnail(`https://singlecolorimage.com/get/${hex.slice(1)}/120x120`),
-          ],
-        };
+      name: 'distribuicao',
+      description: 'Gera parcelas aleatórias que somam exatamente 100%.',
+      options: [opt.inteiro('partes', 'Quantidade de parcelas', true, { min: 2, max: 20 })],
+      run: ({ partes }) => {
+        const pesos = Array.from({ length: partes }, () => {
+          const uniforme = (sortear(1_000_000) + 1) / 1_000_001;
+          return -Math.log(uniforme);
+        });
+        const total = pesos.reduce((soma, peso) => soma + peso, 0);
+        const centesimos = pesos.map((peso) => Math.floor(peso / total * 10_000));
+        centesimos[centesimos.length - 1] += 10_000 - centesimos.reduce((soma, valor) => soma + valor, 0);
+        return centesimos
+          .map((valor, indice) => `**Parte ${indice + 1}:** ${(valor / 100).toFixed(2).replace('.', ',')}%`)
+          .join('\n');
       },
     },
     {
-      name: 'emoji',
-      description: 'Sorteia um emoji.',
-      run: () =>
-        `${escolher([
-          '😀','😂','🥰','😎','🤔','😭','🥳','😴','🤯','🫠','👽','🤖','🎃','👻','🐶','🐱',
-          '🦊','🐼','🦄','🐙','🍕','🍔','🌮','🍩','⚽','🎮','🎸','🚀','🌈','⭐','🔥','💎',
-        ])}`,
+      name: 'coordenada',
+      description: 'Gera uma coordenada geográfica aleatória dentro de limites.',
+      options: [
+        opt.numero('latitude-minima', 'Latitude mínima', true, { min: -90, max: 90 }),
+        opt.numero('latitude-maxima', 'Latitude máxima', true, { min: -90, max: 90 }),
+        opt.numero('longitude-minima', 'Longitude mínima', true, { min: -180, max: 180 }),
+        opt.numero('longitude-maxima', 'Longitude máxima', true, { min: -180, max: 180 }),
+        opt.inteiro('casas', 'Casas decimais; padrão 6', false, { min: 0, max: 8 }),
+      ],
+      run: ({
+        'latitude-minima': latitudeMinima,
+        'latitude-maxima': latitudeMaxima,
+        'longitude-minima': longitudeMinima,
+        'longitude-maxima': longitudeMaxima,
+        casas,
+      }) => {
+        if (latitudeMinima >= latitudeMaxima || longitudeMinima >= longitudeMaxima) {
+          throw aviso('Cada limite mínimo precisa ser menor que o máximo correspondente.');
+        }
+        const unidade = () => (sortear(1_000_000_000) + 0.5) / 1_000_000_000;
+        const latitude = latitudeMinima + unidade() * (latitudeMaxima - latitudeMinima);
+        const longitude = longitudeMinima + unidade() * (longitudeMaxima - longitudeMinima);
+        const precisao = casas ?? 6;
+        return bloco(`${latitude.toFixed(precisao)}, ${longitude.toFixed(precisao)}`);
+      },
     },
     {
-      name: 'bits',
-      description: 'Gera bytes aleatórios em hexadecimal.',
-      options: [opt.inteiro('bytes', 'Quantos bytes (1 a 64)', true, { min: 1, max: 64 })],
-      run: ({ bytes }) => bloco(crypto.randomBytes(bytes).toString('hex')),
+      name: 'reprodutivel',
+      description: 'Escolhe uma opção de forma estável a partir de uma semente.',
+      options: [
+        OPCOES,
+        opt.texto('semente', 'Texto que determina o resultado', true, { max: 500 }),
+      ],
+      run: ({ opcoes, semente }) => {
+        const lista = itens(opcoes);
+        const hash = crypto.createHash('sha256').update(semente).digest();
+        const indice = hash.readUInt32BE(0) % lista.length;
+        return `**Opção escolhida:** ${lista[indice]}\n**Semente:** \`${semente.replaceAll('`', '´')}\``;
+      },
     },
   ],
 });

@@ -1,14 +1,17 @@
 import crypto from 'node:crypto';
 import { colors } from '../../config.js';
 import { db, getGuildConfig } from '../../lib/db.js';
-import { embed, truncate } from '../../lib/embeds.js';
+import { embed } from '../../lib/embeds.js';
 import { aviso, familia, opt } from '../../lib/familia.js';
+import { quantidade } from '../../lib/portugues.js';
 import { formatDuration } from '../../lib/time.js';
 import { addBalance, getAccount, updateAccount } from '../../services/economy.js';
 
 const sortear = (max) => crypto.randomInt(max);
 const escolher = (itens) => itens[sortear(itens.length)];
 const entre = (min, max) => min + sortear(max - min + 1);
+const formatar = (valor, casas = 2) =>
+  Number(valor.toFixed(casas)).toLocaleString('pt-BR', { maximumFractionDigits: casas });
 
 const lerAcao = db.prepare('SELECT quando FROM acoes WHERE guild_id = ? AND user_id = ? AND acao = ?');
 const gravarAcao = db.prepare(`
@@ -16,36 +19,18 @@ const gravarAcao = db.prepare(`
   ON CONFLICT (guild_id, user_id, acao) DO UPDATE SET quando = excluded.quando
 `);
 
-/** Cooldown durável: falha com aviso legível se ainda não deu o tempo. */
 function cobrarEspera(interaction, acao, duracao) {
   const anterior = lerAcao.get(interaction.guildId, interaction.user.id, acao)?.quando ?? 0;
   const restante = anterior + duracao - Date.now();
-  if (restante > 0) throw aviso(`Calma! Você pode fazer isso de novo em **${formatDuration(restante)}**.`);
+  if (restante > 0) throw aviso(`Essa ação estará disponível em **${formatDuration(restante)}**.`);
   gravarAcao.run(interaction.guildId, interaction.user.id, acao, Date.now());
 }
 
 const moeda = (interaction) => getGuildConfig(interaction.guildId)?.currency_name ?? 'moedas';
-const dinheiro = (valor, interaction) => `**${valor.toLocaleString('pt-BR')}** ${moeda(interaction)}`;
-
+const dinheiro = (valor, interaction) => `**${Math.round(valor).toLocaleString('pt-BR')}** ${moeda(interaction)}`;
 const saldoDe = (interaction, userId = interaction.user.id) =>
   getAccount(interaction.guildId, userId).balance;
 
-/** Atividade que rende dinheiro com chance de dar errado. */
-const atividade = ({ name, description, emoji, espera, minimo, maximo, sucessos, fracassos, chance = 80 }) => ({
-  name,
-  description,
-  run: (_, interaction) => {
-    cobrarEspera(interaction, name, espera);
-    if (sortear(100) >= chance) {
-      return `${emoji} ${escolher(fracassos)}\n\nVocê não ganhou nada dessa vez.`;
-    }
-    const ganho = entre(minimo, maximo);
-    const conta = addBalance(interaction.guildId, interaction.user.id, ganho);
-    return `${emoji} ${escolher(sucessos)}\n\nVocê ganhou ${dinheiro(ganho, interaction)}.\nSaldo: ${dinheiro(conta.balance, interaction)}`;
-  },
-});
-
-/** Aposta simples: valida a entrada, resolve e ajusta o saldo. */
 function apostar(interaction, valor, ganhou, multiplicador = 2) {
   const saldo = saldoDe(interaction);
   if (valor > saldo) throw aviso(`Você só tem ${dinheiro(saldo, interaction)}.`);
@@ -54,237 +39,164 @@ function apostar(interaction, valor, ganhou, multiplicador = 2) {
   return { delta, saldo: conta.balance };
 }
 
+function lerPesos(texto) {
+  const partes = texto
+    .split(/[,;\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const valores = partes.map((item) => Number(item.replace(',', '.')));
+  if (
+    valores.length < 2 ||
+    valores.length > 20 ||
+    valores.some((item) => Number.isFinite(item) === false || item <= 0)
+  ) {
+    throw aviso('Informe de 2 a 20 pesos positivos, separados por vírgula.');
+  }
+  return valores;
+}
+
 const APOSTA = opt.inteiro('valor', 'Quanto apostar', true, { min: 1, max: 1_000_000 });
+const VALOR = (name, description) =>
+  opt.numero(name, description, true, { min: 0.01, max: 1_000_000_000_000 });
 
 export default familia({
   name: 'bolso',
-  // Promovidos a comando de topo: saem da família e viram /nome direto.
-  atalhos: ['minerar', 'pescar', 'cacar', 'plantar', 'crime', 'mendigar', 'reciclar', 'programar', 'transmitir'],
-  description: 'Trabalhos, apostas, investimentos e o que fazer com o seu dinheiro.',
+  // As calculadoras promovidas são comandos independentes; não ficam duplicadas em /bolso.
+  atalhos: [
+    'orcamento',
+    'parcelar',
+    'meta-financeira',
+    'reserva',
+    'custo-hora',
+    'taxa-poupanca',
+    'ponto-equilibrio',
+    'margem',
+    'extrato',
+  ],
+  description: 'Reúne jogos de economia virtual, análises do servidor e cálculos financeiros.',
   cooldown: 2,
   dm: false,
   subs: [
-    atividade({
-      name: 'minerar', description: 'Vai para a mina atrás de minérios.', emoji: '⛏️',
-      espera: 20 * 60_000, minimo: 60, maximo: 420, chance: 85,
-      sucessos: ['Você achou um veio de ferro.', 'Saiu um punhado de ouro!', 'Uma safira no meio da pedra.'],
-      fracassos: ['A picareta quebrou logo no começo.', 'Só pedra comum hoje.'],
-    }),
-    atividade({
-      name: 'pescar', description: 'Joga a linha e espera.', emoji: '🎣',
-      espera: 15 * 60_000, minimo: 40, maximo: 300, chance: 80,
-      sucessos: ['Um dourado enorme!', 'Pegou um cardume inteiro.', 'Tilápia gorda na rede.'],
-      fracassos: ['Só veio uma bota velha.', 'O peixe roubou a isca e fugiu.'],
-    }),
-    atividade({
-      name: 'cacar', description: 'Sai para caçar na mata.', emoji: '🏹',
-      espera: 25 * 60_000, minimo: 80, maximo: 500, chance: 70,
-      sucessos: ['Voltou com a caça do dia.', 'Um javali grande!'],
-      fracassos: ['Perdeu o rastro.', 'Você tropeçou e espantou tudo.'],
-    }),
-    atividade({
-      name: 'plantar', description: 'Planta e colhe na roça.', emoji: '🌱',
-      espera: 45 * 60_000, minimo: 150, maximo: 700, chance: 90,
-      sucessos: ['A colheita rendeu bem.', 'O milho deu no ponto.', 'Feira cheia hoje!'],
-      fracassos: ['A praga comeu tudo.', 'Choveu demais e apodreceu.'],
-    }),
-    atividade({
-      name: 'reciclar', description: 'Recolhe recicláveis pela cidade.', emoji: '♻️',
-      espera: 10 * 60_000, minimo: 20, maximo: 160, chance: 95,
-      sucessos: ['Encheu o saco de latinhas.', 'Achou papelão bom.'],
-      fracassos: ['Alguém passou antes de você.'],
-    }),
-    atividade({
-      name: 'programar', description: 'Pega um freela de programação.', emoji: '💻',
-      espera: 60 * 60_000, minimo: 300, maximo: 1200, chance: 75,
-      sucessos: ['Entregou o sistema e o cliente pagou à vista.', 'Corrigiu o bug em 10 minutos e cobrou por 10 horas.'],
-      fracassos: ['O cliente sumiu sem pagar.', 'Os requisitos mudaram no meio e o projeto morreu.'],
-    }),
-    atividade({
-      name: 'transmitir', description: 'Faz uma live e recebe doações.', emoji: '🎥',
-      espera: 40 * 60_000, minimo: 100, maximo: 900, chance: 65,
-      sucessos: ['A live bombou!', 'Um viewer generoso mandou um valor alto.'],
-      fracassos: ['Zero espectadores hoje.', 'A internet caiu no meio.'],
-    }),
-    atividade({
-      name: 'entregar', description: 'Faz entregas de bicicleta.', emoji: '🛵',
-      espera: 20 * 60_000, minimo: 70, maximo: 350, chance: 88,
-      sucessos: ['Sete entregas sem atraso.', 'A gorjeta foi melhor que a corrida.'],
-      fracassos: ['O pedido caiu no caminho.'],
-    }),
     {
-      name: 'crime',
-      description: 'Alto risco, alto retorno. Pode dar muito errado.',
-      run: (_, interaction) => {
-        cobrarEspera(interaction, 'crime', 90 * 60_000);
-        const saldo = saldoDe(interaction);
-        if (sortear(100) < 45) {
-          const ganho = entre(400, 2000);
-          const conta = addBalance(interaction.guildId, interaction.user.id, ganho);
-          return `🕶️ ${escolher(['Deu tudo certo e ninguém viu.', 'Saída limpa pelos fundos.'])}\n\nVocê levou ${dinheiro(ganho, interaction)}.\nSaldo: ${dinheiro(conta.balance, interaction)}`;
+      name: 'orcamento',
+      description: 'Divide uma renda entre despesas essenciais, objetivos e uso flexível.',
+      options: [
+        VALOR('renda', 'Renda disponível'),
+        opt.numero('essenciais', 'Percentual para despesas essenciais; padrão 50', false, { min: 0, max: 100 }),
+        opt.numero('objetivos', 'Percentual para metas e reservas; padrão 20', false, { min: 0, max: 100 }),
+      ],
+      run: ({ renda, essenciais, objetivos }) => {
+        const pctEssenciais = essenciais ?? 50;
+        const pctObjetivos = objetivos ?? 20;
+        if (pctEssenciais + pctObjetivos > 100) {
+          throw aviso('A soma dos percentuais não pode passar de 100%.');
         }
-        const multa = Math.min(saldo, entre(200, 900));
-        const conta = addBalance(interaction.guildId, interaction.user.id, -multa);
-        return `🚔 ${escolher(['Você foi pego em flagrante.', 'O alarme disparou.'])}\n\nPagou ${dinheiro(multa, interaction)} de multa.\nSaldo: ${dinheiro(conta.balance, interaction)}`;
-      },
-    },
-    {
-      name: 'mendigar',
-      description: 'Pede uma ajudinha. Rende pouco, mas é rápido.',
-      run: (_, interaction) => {
-        cobrarEspera(interaction, 'mendigar', 5 * 60_000);
-        const saldo = saldoDe(interaction);
-        if (saldo > 5000) throw aviso('Você está rico demais para pedir esmola. 💰');
-        const ganho = entre(5, 60);
-        const conta = addBalance(interaction.guildId, interaction.user.id, ganho);
-        return `🥺 ${escolher(['Alguém teve pena de você.', 'Um estranho deu uns trocados.'])}\n\n+${dinheiro(ganho, interaction)}\nSaldo: ${dinheiro(conta.balance, interaction)}`;
-      },
-    },
-    {
-      name: 'apostar-moeda',
-      description: 'Cara ou coroa valendo dinheiro.',
-      options: [
-        APOSTA,
-        { kind: 'string', name: 'lado', description: 'Sua escolha', required: true,
-          choices: [{ name: 'Cara', value: 'cara' }, { name: 'Coroa', value: 'coroa' }] },
-      ],
-      run: ({ valor, lado }, interaction) => {
-        const saiu = sortear(2) ? 'cara' : 'coroa';
-        const { delta, saldo } = apostar(interaction, valor, saiu === lado);
-        return `🪙 Saiu **${saiu}**!\n\n${delta > 0 ? `Você ganhou ${dinheiro(delta, interaction)}` : `Você perdeu ${dinheiro(-delta, interaction)}`}.\nSaldo: ${dinheiro(saldo, interaction)}`;
-      },
-    },
-    {
-      name: 'apostar-dado',
-      description: 'Acerte o número do dado e ganhe 5x.',
-      options: [APOSTA, opt.inteiro('numero', 'De 1 a 6', true, { min: 1, max: 6 })],
-      run: ({ valor, numero }, interaction) => {
-        const saiu = sortear(6) + 1;
-        const { delta, saldo } = apostar(interaction, valor, saiu === numero, 5);
-        return `🎲 Caiu **${saiu}**!\n\n${delta > 0 ? `Você ganhou ${dinheiro(delta, interaction)}` : `Você perdeu ${dinheiro(-delta, interaction)}`}.\nSaldo: ${dinheiro(saldo, interaction)}`;
-      },
-    },
-    {
-      name: 'caca-niquel',
-      description: 'Gira a máquina caça-níquel.',
-      options: [APOSTA],
-      run: ({ valor }, interaction) => {
-        const simbolos = ['🍒', '🍋', '🔔', '⭐', '💎'];
-        const giro = [escolher(simbolos), escolher(simbolos), escolher(simbolos)];
-        const iguais = new Set(giro).size;
-        const multiplicador = iguais === 1 ? 10 : iguais === 2 ? 2 : 0;
-        const { delta, saldo } = apostar(interaction, valor, multiplicador > 0, multiplicador);
-        return `🎰 ${giro.join(' | ')}\n\n${
-          multiplicador === 10 ? `**JACKPOT!** ${dinheiro(delta, interaction)}` :
-          multiplicador === 2 ? `Dois iguais! +${dinheiro(delta, interaction)}` :
-          `Nada. Você perdeu ${dinheiro(-delta, interaction)}.`
-        }\nSaldo: ${dinheiro(saldo, interaction)}`;
-      },
-    },
-    {
-      name: 'roleta',
-      description: 'Aposta na cor da roleta.',
-      options: [
-        APOSTA,
-        { kind: 'string', name: 'cor', description: 'A cor', required: true,
-          choices: [
-            { name: 'Vermelho (2x)', value: 'vermelho' },
-            { name: 'Preto (2x)', value: 'preto' },
-            { name: 'Verde (14x)', value: 'verde' },
-          ] },
-      ],
-      run: ({ valor, cor }, interaction) => {
-        const numero = sortear(37);
-        const vermelhos = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-        const saiu = numero === 0 ? 'verde' : vermelhos.includes(numero) ? 'vermelho' : 'preto';
-        const { delta, saldo } = apostar(interaction, valor, saiu === cor, cor === 'verde' ? 14 : 2);
-        const emoji = { verde: '🟢', vermelho: '🔴', preto: '⚫' }[saiu];
-        return `🎡 Caiu **${numero}** ${emoji} (${saiu})\n\n${delta > 0 ? `Você ganhou ${dinheiro(delta, interaction)}` : `Você perdeu ${dinheiro(-delta, interaction)}`}.\nSaldo: ${dinheiro(saldo, interaction)}`;
-      },
-    },
-    {
-      name: 'alto-baixo',
-      description: 'Adivinhe se a próxima carta é maior ou menor.',
-      options: [
-        APOSTA,
-        { kind: 'string', name: 'palpite', description: 'Sua aposta', required: true,
-          choices: [{ name: 'Maior', value: 'maior' }, { name: 'Menor', value: 'menor' }] },
-      ],
-      run: ({ valor, palpite }, interaction) => {
-        const primeira = sortear(13) + 1;
-        const segunda = sortear(13) + 1;
-        const nome = (n) => ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' })[n] ?? String(n);
-        if (primeira === segunda) return `🃏 Saiu **${nome(primeira)}** e **${nome(segunda)}** — empate, aposta devolvida.`;
-        const acertou = (segunda > primeira) === (palpite === 'maior');
-        const { delta, saldo } = apostar(interaction, valor, acertou);
-        return `🃏 **${nome(primeira)}** → **${nome(segunda)}**\n\n${delta > 0 ? `Acertou! +${dinheiro(delta, interaction)}` : `Errou. −${dinheiro(-delta, interaction)}`}\nSaldo: ${dinheiro(saldo, interaction)}`;
-      },
-    },
-    {
-      name: 'loteria',
-      description: 'Aposta num número de 1 a 100. Prêmio de 50x.',
-      options: [APOSTA, opt.inteiro('numero', 'De 1 a 100', true, { min: 1, max: 100 })],
-      run: ({ valor, numero }, interaction) => {
-        const sorteado = sortear(100) + 1;
-        const { delta, saldo } = apostar(interaction, valor, sorteado === numero, 50);
-        return `🎟️ O número sorteado foi **${sorteado}**.\n\n${delta > 0 ? `🎉 **VOCÊ GANHOU** ${dinheiro(delta, interaction)}!` : `Não foi dessa vez. −${dinheiro(-delta, interaction)}`}\nSaldo: ${dinheiro(saldo, interaction)}`;
-      },
-    },
-    {
-      name: 'investir',
-      description: 'Investe e descobre o resultado na hora.',
-      options: [opt.inteiro('valor', 'Quanto investir', true, { min: 100, max: 1_000_000 })],
-      run: ({ valor }, interaction) => {
-        cobrarEspera(interaction, 'investir', 30 * 60_000);
-        const saldo = saldoDe(interaction);
-        if (valor > saldo) throw aviso(`Você só tem ${dinheiro(saldo, interaction)}.`);
-        // Retorno entre −40% e +60%: esperança levemente positiva, com risco real.
-        const variacao = entre(-40, 60);
-        const resultado = Math.round((valor * variacao) / 100);
-        const conta = addBalance(interaction.guildId, interaction.user.id, resultado);
+        const pctFlexivel = 100 - pctEssenciais - pctObjetivos;
         return [
-          `📈 Você investiu ${dinheiro(valor, interaction)}.`,
-          `Variação: **${variacao > 0 ? '+' : ''}${variacao}%**`,
-          resultado >= 0 ? `Lucro: ${dinheiro(resultado, interaction)}` : `Prejuízo: ${dinheiro(-resultado, interaction)}`,
-          `Saldo: ${dinheiro(conta.balance, interaction)}`,
+          '## Distribuição do orçamento',
+          `**Despesas essenciais (${formatar(pctEssenciais)}%):** ${formatar(renda * pctEssenciais / 100)}`,
+          `**Metas e reservas (${formatar(pctObjetivos)}%):** ${formatar(renda * pctObjetivos / 100)}`,
+          `**Uso flexível (${formatar(pctFlexivel)}%):** ${formatar(renda * pctFlexivel / 100)}`,
+          '',
+          '_Os valores usam a mesma unidade monetária informada na renda._',
         ].join('\n');
       },
     },
     {
-      name: 'doar',
-      description: 'Doa parte do seu dinheiro para alguém.',
-      options: [opt.usuario('membro', 'Quem recebe', true), opt.inteiro('valor', 'Quanto doar', true, { min: 1, max: 1_000_000 })],
-      run: ({ membro, valor }, interaction) => {
-        if (membro.id === interaction.user.id) throw aviso('Doar para si mesmo não move nada.');
-        if (membro.bot) throw aviso('Bots não usam dinheiro.');
-        const saldo = saldoDe(interaction);
-        if (valor > saldo) throw aviso(`Você só tem ${dinheiro(saldo, interaction)}.`);
-        addBalance(interaction.guildId, interaction.user.id, -valor);
-        addBalance(interaction.guildId, membro.id, valor);
-        return `💝 Você doou ${dinheiro(valor, interaction)} para ${membro}.`;
+      name: 'parcelar',
+      description: 'Calcula o valor total e cada parcela com juros mensais compostos.',
+      options: [
+        VALOR('valor', 'Valor à vista'),
+        opt.inteiro('parcelas', 'Quantidade de parcelas', true, { min: 1, max: 600 }),
+        opt.numero('juros', 'Taxa mensal em porcentagem; padrão 0', false, { min: 0, max: 100 }),
+      ],
+      run: ({ valor, parcelas, juros }) => {
+        const taxa = (juros ?? 0) / 100;
+        const fator = (1 + taxa) ** parcelas;
+        const parcela = taxa === 0 ? valor / parcelas : valor * taxa * fator / (fator - 1);
+        const total = parcela * parcelas;
+        return `## Parcelamento\n**${parcelas} parcelas de:** ${formatar(parcela)}\n**Total:** ${formatar(total)}\n**Acréscimo:** ${formatar(total - valor)}\n**Taxa mensal:** ${formatar(juros ?? 0)}%`;
       },
     },
     {
-      name: 'rachar',
-      description: 'Divide um valor entre várias pessoas.',
+      name: 'meta-financeira',
+      description: 'Calcula quanto guardar por mês para alcançar uma meta.',
       options: [
-        opt.inteiro('valor', 'Valor total', true, { min: 2, max: 1_000_000 }),
-        opt.inteiro('pessoas', 'Entre quantas pessoas', true, { min: 2, max: 50 }),
+        VALOR('meta', 'Valor desejado'),
+        opt.inteiro('meses', 'Prazo em meses', true, { min: 1, max: 1200 }),
+        opt.numero('atual', 'Valor já acumulado; padrão 0', false, { min: 0, max: 1_000_000_000_000 }),
       ],
-      run: ({ valor, pessoas }, interaction) => {
-        const cada = Math.floor(valor / pessoas);
-        const resto = valor % pessoas;
-        return [
-          `Dividindo ${dinheiro(valor, interaction)} entre **${pessoas}** pessoas:`,
-          `Cada uma paga **${cada.toLocaleString('pt-BR')}**`,
-          resto > 0 ? `Sobram **${resto}** — alguém paga a mais.` : 'Divisão exata. ✅',
-        ].join('\n');
+      run: ({ meta, meses, atual }) => {
+        const acumulado = atual ?? 0;
+        const restante = Math.max(0, meta - acumulado);
+        return `## Meta financeira\n**Meta:** ${formatar(meta)}\n**Já acumulado:** ${formatar(acumulado)}\n**Falta:** ${formatar(restante)}\n**Valor mensal necessário:** ${formatar(restante / meses)} por ${meses} meses`;
+      },
+    },
+    {
+      name: 'reserva',
+      description: 'Calcula uma reserva a partir das despesas mensais e do período desejado.',
+      options: [
+        VALOR('despesas', 'Despesas essenciais mensais'),
+        opt.numero('meses', 'Quantidade de meses cobertos', true, { min: 0.1, max: 120 }),
+        opt.numero('atual', 'Valor já reservado; padrão 0', false, { min: 0, max: 1_000_000_000_000 }),
+      ],
+      run: ({ despesas, meses, atual }) => {
+        const alvo = despesas * meses;
+        const acumulado = atual ?? 0;
+        return `## Reserva planejada\n**Alvo:** ${formatar(alvo)}\n**Valor atual:** ${formatar(acumulado)}\n**Falta:** ${formatar(Math.max(0, alvo - acumulado))}\n**Cobertura desejada:** ${formatar(meses)} meses`;
+      },
+    },
+    {
+      name: 'custo-hora',
+      description: 'Calcula o valor por hora necessário para atingir uma receita mensal.',
+      options: [
+        VALOR('receita', 'Receita mensal desejada'),
+        opt.numero('horas', 'Horas faturáveis no mês', true, { min: 0.1, max: 744 }),
+        opt.numero('custos', 'Custos mensais adicionais; padrão 0', false, { min: 0, max: 1_000_000_000_000 }),
+      ],
+      run: ({ receita, horas, custos }) => {
+        const total = receita + (custos ?? 0);
+        return `## Custo por hora\n**Receita e custos a cobrir:** ${formatar(total)}\n**Horas faturáveis:** ${formatar(horas)}\n**Valor mínimo por hora:** ${formatar(total / horas)}`;
+      },
+    },
+    {
+      name: 'taxa-poupanca',
+      description: 'Calcula qual porcentagem da renda foi guardada.',
+      options: [VALOR('renda', 'Renda do período'), VALOR('guardado', 'Valor guardado no período')],
+      run: ({ renda, guardado }) => {
+        const taxa = guardado / renda * 100;
+        return `## Taxa de poupança\n**Renda:** ${formatar(renda)}\n**Valor guardado:** ${formatar(guardado)}\n**Taxa:** ${formatar(taxa)}%`;
+      },
+    },
+    {
+      name: 'ponto-equilibrio',
+      description: 'Calcula quantas unidades cobrem custos fixos e variáveis.',
+      options: [
+        VALOR('custos-fixos', 'Custos fixos totais'),
+        VALOR('preco', 'Preço por unidade'),
+        opt.numero('custo-variavel', 'Custo variável por unidade', true, { min: 0, max: 1_000_000_000_000 }),
+      ],
+      run: ({ 'custos-fixos': custosFixos, preco, 'custo-variavel': custoVariavel }) => {
+        const contribuicao = preco - custoVariavel;
+        if (contribuicao <= 0) throw aviso('O preço precisa ser maior que o custo variável por unidade.');
+        const unidades = Math.ceil(custosFixos / contribuicao);
+        return `## Ponto de equilíbrio\n**Margem de contribuição:** ${formatar(contribuicao)} por unidade\n**Unidades necessárias:** ${unidades.toLocaleString('pt-BR')}\n**Receita aproximada:** ${formatar(unidades * preco)}`;
+      },
+    },
+    {
+      name: 'margem',
+      description: 'Calcula lucro e margem a partir da receita e dos custos.',
+      options: [VALOR('receita', 'Receita total'), VALOR('custos', 'Custos totais')],
+      run: ({ receita, custos }) => {
+        const lucro = receita - custos;
+        const percentual = lucro / receita * 100;
+        return `## Margem\n**Receita:** ${formatar(receita)}\n**Custos:** ${formatar(custos)}\n**Resultado:** ${formatar(lucro)}\n**Margem:** ${formatar(percentual)}%`;
       },
     },
     {
       name: 'extrato',
-      description: 'Mostra a sua situação financeira completa.',
-      options: [opt.usuario('membro', 'De quem (padrão: você)', false)],
+      description: 'Mostra carteira, banco, patrimônio e posição no servidor.',
+      options: [opt.usuario('membro', 'Pessoa consultada; o padrão é você', false)],
       run: ({ membro }, interaction) => {
         const alvo = membro ?? interaction.user;
         const conta = getAccount(interaction.guildId, alvo.id);
@@ -300,74 +212,232 @@ export default familia({
               .addFields(
                 { name: 'Carteira', value: dinheiro(conta.balance, interaction), inline: true },
                 { name: 'Banco', value: dinheiro(conta.bank, interaction), inline: true },
-                { name: 'Total', value: dinheiro(total, interaction), inline: true },
+                { name: 'Patrimônio', value: dinheiro(total, interaction), inline: true },
                 { name: 'Posição', value: `#${posicao}`, inline: true },
-                { name: 'Sequência diária', value: `${conta.streak} dia(s)`, inline: true },
+                { name: 'Sequência diária', value: quantidade(conta.streak, 'dia'), inline: true },
               ),
           ],
         };
       },
     },
     {
-      name: 'ranking',
-      description: 'Os mais ricos do servidor, somando banco e carteira.',
+      name: 'comparar-patrimonio',
+      description: 'Compara o patrimônio de duas pessoas no servidor.',
+      options: [
+        opt.usuario('primeira', 'Primeira pessoa', true),
+        opt.usuario('segunda', 'Segunda pessoa', true),
+      ],
+      run: ({ primeira, segunda }, interaction) => {
+        if (primeira.id === segunda.id) throw aviso('Escolha duas pessoas diferentes.');
+        const contaA = getAccount(interaction.guildId, primeira.id);
+        const contaB = getAccount(interaction.guildId, segunda.id);
+        const totalA = contaA.balance + contaA.bank;
+        const totalB = contaB.balance + contaB.bank;
+        const diferenca = Math.abs(totalA - totalB);
+        const maior = totalA === totalB ? null : totalA > totalB ? primeira : segunda;
+        return [
+          `${primeira}: ${dinheiro(totalA, interaction)}`,
+          `${segunda}: ${dinheiro(totalB, interaction)}`,
+          maior ? `\n${maior} tem ${dinheiro(diferenca, interaction)} a mais.` : '\nOs patrimônios são iguais.',
+        ].join('\n');
+      },
+    },
+    {
+      name: 'apostar-dado',
+      description: 'Aposta nas moedas do servidor tentando acertar um dado.',
+      options: [APOSTA, opt.inteiro('numero', 'Número de 1 a 6', true, { min: 1, max: 6 })],
+      run: ({ valor, numero }, interaction) => {
+        const saiu = sortear(6) + 1;
+        const { delta, saldo } = apostar(interaction, valor, saiu === numero, 5);
+        return `O dado caiu em **${saiu}**.\n\n${delta > 0 ? `Ganho: ${dinheiro(delta, interaction)}` : `Perda: ${dinheiro(-delta, interaction)}`}\nSaldo: ${dinheiro(saldo, interaction)}`;
+      },
+    },
+    {
+      name: 'caca-niqueis',
+      description: 'Aposta nas moedas do servidor em uma rodada de caça-níqueis.',
+      options: [APOSTA],
+      run: ({ valor }, interaction) => {
+        const simbolos = ['🍒', '🍋', '🔔', '⭐', '💎'];
+        const giro = [escolher(simbolos), escolher(simbolos), escolher(simbolos)];
+        const distintos = new Set(giro).size;
+        const multiplicador = distintos === 1 ? 10 : distintos === 2 ? 2 : 0;
+        const { delta, saldo } = apostar(interaction, valor, multiplicador > 0, multiplicador);
+        return `${giro.join(' | ')}\n\n${
+          multiplicador === 10 ? `Prêmio máximo: ${dinheiro(delta, interaction)}` :
+          multiplicador === 2 ? `Dois símbolos iguais: +${dinheiro(delta, interaction)}` :
+          `Perda: ${dinheiro(-delta, interaction)}`
+        }\nSaldo: ${dinheiro(saldo, interaction)}`;
+      },
+    },
+    {
+      name: 'roleta',
+      description: 'Aposta nas moedas do servidor escolhendo uma cor da roleta.',
+      options: [
+        APOSTA,
+        { kind: 'string', name: 'cor', description: 'Cor escolhida', required: true,
+          choices: [
+            { name: 'Vermelho (2×)', value: 'vermelho' },
+            { name: 'Preto (2×)', value: 'preto' },
+            { name: 'Verde (14×)', value: 'verde' },
+          ] },
+      ],
+      run: ({ valor, cor }, interaction) => {
+        const numero = sortear(37);
+        const vermelhos = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
+        const saiu = numero === 0 ? 'verde' : vermelhos.includes(numero) ? 'vermelho' : 'preto';
+        const { delta, saldo } = apostar(interaction, valor, saiu === cor, cor === 'verde' ? 14 : 2);
+        return `A roleta caiu em **${numero} (${saiu})**.\n\n${delta > 0 ? `Ganho: ${dinheiro(delta, interaction)}` : `Perda: ${dinheiro(-delta, interaction)}`}\nSaldo: ${dinheiro(saldo, interaction)}`;
+      },
+    },
+    {
+      name: 'alto-baixo',
+      description: 'Aposta se a próxima carta será maior ou menor.',
+      options: [
+        APOSTA,
+        { kind: 'string', name: 'palpite', description: 'Direção escolhida', required: true,
+          choices: [{ name: 'Maior', value: 'maior' }, { name: 'Menor', value: 'menor' }] },
+      ],
+      run: ({ valor, palpite }, interaction) => {
+        const primeira = sortear(13) + 1;
+        const segunda = sortear(13) + 1;
+        const nome = (n) => ({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' })[n] ?? String(n);
+        if (primeira === segunda) return `Saiu **${nome(primeira)}** e **${nome(segunda)}**. A aposta foi devolvida.`;
+        const acertou = (segunda > primeira) === (palpite === 'maior');
+        const { delta, saldo } = apostar(interaction, valor, acertou);
+        return `**${nome(primeira)} → ${nome(segunda)}**\n\n${delta > 0 ? `Ganho: ${dinheiro(delta, interaction)}` : `Perda: ${dinheiro(-delta, interaction)}`}\nSaldo: ${dinheiro(saldo, interaction)}`;
+      },
+    },
+    {
+      name: 'loteria',
+      description: 'Aposta nas moedas do servidor tentando acertar um número de 1 a 100.',
+      options: [APOSTA, opt.inteiro('numero', 'Número de 1 a 100', true, { min: 1, max: 100 })],
+      run: ({ valor, numero }, interaction) => {
+        const sorteado = sortear(100) + 1;
+        const { delta, saldo } = apostar(interaction, valor, sorteado === numero, 50);
+        return `O número sorteado foi **${sorteado}**.\n\n${delta > 0 ? `Ganho: ${dinheiro(delta, interaction)}` : `Perda: ${dinheiro(-delta, interaction)}`}\nSaldo: ${dinheiro(saldo, interaction)}`;
+      },
+    },
+    {
+      name: 'mercado',
+      description: 'Simula uma rodada de mercado com as moedas do servidor.',
+      options: [opt.inteiro('valor', 'Quantidade aplicada', true, { min: 100, max: 1_000_000 })],
+      run: ({ valor }, interaction) => {
+        cobrarEspera(interaction, 'mercado', 30 * 60_000);
+        const saldo = saldoDe(interaction);
+        if (valor > saldo) throw aviso(`Você só tem ${dinheiro(saldo, interaction)}.`);
+        const variacao = entre(-40, 60);
+        const resultado = Math.round(valor * variacao / 100);
+        const conta = addBalance(interaction.guildId, interaction.user.id, resultado);
+        return `## Rodada de mercado\n**Valor aplicado:** ${dinheiro(valor, interaction)}\n**Variação:** ${variacao > 0 ? '+' : ''}${variacao}%\n**Resultado:** ${resultado >= 0 ? '+' : '−'}${dinheiro(Math.abs(resultado), interaction)}\n**Saldo:** ${dinheiro(conta.balance, interaction)}`;
+      },
+    },
+    {
+      name: 'rachar',
+      description: 'Divide um valor igualmente entre várias pessoas.',
+      options: [
+        opt.inteiro('valor', 'Valor total', true, { min: 2, max: 1_000_000 }),
+        opt.inteiro('pessoas', 'Quantidade de pessoas', true, { min: 2, max: 50 }),
+      ],
+      run: ({ valor, pessoas }, interaction) => {
+        const cada = Math.floor(valor / pessoas);
+        const resto = valor % pessoas;
+        return `Dividindo ${dinheiro(valor, interaction)} entre **${pessoas}** pessoas:\n**Cada pessoa:** ${cada.toLocaleString('pt-BR')}\n**Resto:** ${resto.toLocaleString('pt-BR')}`;
+      },
+    },
+    {
+      name: 'distribuicao',
+      description: 'Mostra como o patrimônio está distribuído entre as contas do servidor.',
       run: (_, interaction) => {
-        const linhas = db
-          .prepare('SELECT user_id, balance + bank AS total FROM economy WHERE guild_id = ? ORDER BY total DESC LIMIT 15')
+        const totais = db
+          .prepare('SELECT balance + bank AS total FROM economy WHERE guild_id = ?')
           .all(interaction.guildId)
-          .map((r, i) => `${['🥇', '🥈', '🥉'][i] ?? `**${i + 1}.**`} <@${r.user_id}> — ${r.total.toLocaleString('pt-BR')}`);
-        return {
-          embeds: [
-            embed.base(colors.economy)
-              .setTitle(`Mais ricos de ${interaction.guild.name}`)
-              .setDescription(truncate(linhas.join('\n') || '_Ninguém tem dinheiro ainda._', 4000)),
-          ],
-        };
+          .map((linha) => linha.total);
+        const faixas = [
+          ['Sem patrimônio', (valor) => valor === 0],
+          ['Até 1.000', (valor) => valor > 0 && valor <= 1_000],
+          ['De 1.001 a 10.000', (valor) => valor > 1_000 && valor <= 10_000],
+          ['Acima de 10.000', (valor) => valor > 10_000],
+        ];
+        const descricao = totais.length
+          ? faixas.map(([nome, teste]) => `**${nome}:** ${quantidade(totais.filter(teste).length, 'conta')}`).join('\n')
+          : 'Ainda não há contas registradas.';
+        return { embeds: [embed.base(colors.economy).setTitle('Distribuição patrimonial').setDescription(descricao)] };
+      },
+    },
+    {
+      name: 'mediana-servidor',
+      description: 'Calcula a mediana e a média dos patrimônios do servidor.',
+      run: (_, interaction) => {
+        const valores = db
+          .prepare('SELECT balance + bank AS total FROM economy WHERE guild_id = ? ORDER BY total')
+          .all(interaction.guildId)
+          .map((linha) => linha.total);
+        if (valores.length === 0) throw aviso('Ainda não há contas registradas no servidor.');
+        const meio = Math.floor(valores.length / 2);
+        const mediana = valores.length % 2 ? valores[meio] : (valores[meio - 1] + valores[meio]) / 2;
+        const media = valores.reduce((soma, valor) => soma + valor, 0) / valores.length;
+        return `## Patrimônio do servidor\n**Contas:** ${valores.length.toLocaleString('pt-BR')}\n**Mediana:** ${dinheiro(mediana, interaction)}\n**Média:** ${dinheiro(media, interaction)}`;
       },
     },
     {
       name: 'total-servidor',
-      description: 'Quanto dinheiro existe no servidor inteiro.',
+      description: 'Mostra o total de moedas em circulação no servidor.',
       run: (_, interaction) => {
         const dados = db
           .prepare('SELECT COUNT(*) AS contas, SUM(balance + bank) AS total, MAX(balance + bank) AS maior FROM economy WHERE guild_id = ?')
           .get(interaction.guildId);
         const total = dados.total ?? 0;
-        return [
-          `**${(dados.contas ?? 0).toLocaleString('pt-BR')}** contas`,
-          `Total em circulação: **${total.toLocaleString('pt-BR')}** ${moeda(interaction)}`,
-          `Maior fortuna: **${(dados.maior ?? 0).toLocaleString('pt-BR')}**`,
-          `Média por conta: **${dados.contas ? Math.round(total / dados.contas).toLocaleString('pt-BR') : 0}**`,
-        ].join('\n');
+        return `**Contas:** ${(dados.contas ?? 0).toLocaleString('pt-BR')}\n**Total em circulação:** ${dinheiro(total, interaction)}\n**Maior patrimônio:** ${dinheiro(dados.maior ?? 0, interaction)}\n**Média por conta:** ${dinheiro(dados.contas ? total / dados.contas : 0, interaction)}`;
       },
     },
     {
       name: 'zerar-minha-conta',
-      description: 'Apaga o seu próprio saldo. Sem volta.',
+      description: 'Zera a sua carteira e o seu banco no servidor.',
       run: (_, interaction) => {
-        const saldo = getAccount(interaction.guildId, interaction.user.id);
-        if (saldo.balance + saldo.bank === 0) throw aviso('Sua conta já está zerada.');
+        const conta = getAccount(interaction.guildId, interaction.user.id);
+        const total = conta.balance + conta.bank;
+        if (total === 0) throw aviso('Sua conta já está zerada.');
         updateAccount(interaction.guildId, interaction.user.id, { balance: 0, bank: 0 });
-        return `💸 Conta zerada. Você abriu mão de ${dinheiro(saldo.balance + saldo.bank, interaction)}.`;
+        return `Sua conta foi zerada. O patrimônio removido era ${dinheiro(total, interaction)}.`;
       },
     },
     {
-      name: 'esperas',
-      description: 'Mostra quanto falta para cada atividade liberar.',
-      run: (_, interaction) => {
-        const tempos = {
-          mendigar: 5 * 60_000, reciclar: 10 * 60_000, pescar: 15 * 60_000,
-          minerar: 20 * 60_000, entregar: 20 * 60_000, cacar: 25 * 60_000,
-          investir: 30 * 60_000, transmitir: 40 * 60_000, plantar: 45 * 60_000,
-          programar: 60 * 60_000, crime: 90 * 60_000,
-        };
-        const agora = Date.now();
-        const linhas = Object.entries(tempos).map(([acao, duracao]) => {
-          const quando = lerAcao.get(interaction.guildId, interaction.user.id, acao)?.quando ?? 0;
-          const falta = quando + duracao - agora;
-          return `${falta > 0 ? '⏳' : '✅'} \`/bolso ${acao}\` — ${falta > 0 ? formatDuration(falta) : 'disponível'}`;
-        });
-        return { embeds: [embed.base(colors.economy).setTitle('Suas atividades').setDescription(linhas.join('\n'))] };
+      name: 'preco-venda',
+      description: 'Calcula um preço de venda a partir do custo e da margem desejada.',
+      options: [
+        VALOR('custo', 'Custo total por unidade'),
+        opt.numero('margem', 'Margem desejada em porcentagem', true, { min: 0.01, max: 99.99 }),
+      ],
+      run: ({ custo, margem }) => {
+        const preco = custo / (1 - margem / 100);
+        return `## Preço de venda\n**Custo:** ${formatar(custo)}\n**Margem desejada:** ${formatar(margem)}%\n**Preço calculado:** ${formatar(preco)}\n**Resultado por unidade:** ${formatar(preco - custo)}`;
+      },
+    },
+    {
+      name: 'comissao',
+      description: 'Calcula uma comissão percentual com parcela fixa opcional.',
+      options: [
+        VALOR('vendas', 'Valor total das vendas'),
+        opt.numero('taxa', 'Percentual de comissão', true, { min: 0, max: 100 }),
+        opt.numero('fixo', 'Parcela fixa adicional; padrão 0', false, { min: 0, max: 1_000_000_000_000 }),
+      ],
+      run: ({ vendas, taxa, fixo }) => {
+        const variavel = vendas * taxa / 100;
+        return `## Comissão\n**Parcela variável:** ${formatar(variavel)}\n**Parcela fixa:** ${formatar(fixo ?? 0)}\n**Total:** ${formatar(variavel + (fixo ?? 0))}`;
+      },
+    },
+    {
+      name: 'rateio',
+      description: 'Divide um valor proporcionalmente entre pesos informados.',
+      options: [
+        VALOR('total', 'Valor total'),
+        opt.texto('pesos', 'Pesos separados por vírgula', true, { max: 300 }),
+      ],
+      run: ({ total, pesos }) => {
+        const valores = lerPesos(pesos);
+        const soma = valores.reduce((acumulado, valor) => acumulado + valor, 0);
+        const partes = valores.map((peso) => ({ peso, valor: total * peso / soma }));
+        return `## Rateio proporcional\n${partes.map((parte, indice) => `**Parte ${indice + 1}** — peso ${formatar(parte.peso)}: ${formatar(parte.valor)}`).join('\n')}\n\n**Total:** ${formatar(total)}`;
       },
     },
   ],

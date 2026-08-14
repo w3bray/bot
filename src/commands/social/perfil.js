@@ -44,7 +44,9 @@ export default {
         iconURL: user.displayAvatarURL({ size: 128 }),
       })
       .setThumbnail(user.displayAvatarURL({ size: 256 }))
-      .setDescription(profile.bio ? `*${profile.bio}*` : '*Sem bio. Use `/bio` para escrever uma.*')
+      .setDescription(
+        profile.bio ? `*${profile.bio}*` : '*Sem biografia. Use `/biografia` para escrever uma.*',
+      )
       .addFields(
         {
           name: '📈 Nível',

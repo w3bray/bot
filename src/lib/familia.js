@@ -199,7 +199,7 @@ export function familia({
 
     async execute(interaction, client) {
       const sub = porNome.get(interaction.options.getSubcommand());
-      if (!sub) return replyError(interaction, 'Esse subcomando não existe mais.');
+      if (!sub) return replyError(interaction, 'Essa opção mudou ou foi removida. Digite `/ajuda` para ver a lista atual.');
       return despachar(sub, interaction, client, cor);
     },
   };

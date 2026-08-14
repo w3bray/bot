@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import { logger } from '../lib/logger.js';
 import { contarRotas } from '../lib/rotas.js';
 import { limparEscopoDeServidor } from '../services/autodeploy.js';
+import { quantidade } from '../lib/portugues.js';
 
 /**
  * O bot entrou num servidor novo.
@@ -22,8 +23,8 @@ export default {
 
   async execute(guild, client) {
     logger.info(
-      `Entrei em "${guild.name}" (${guild.id}) — ${guild.memberCount} membros. ` +
-        `Agora em ${client.guilds.cache.size} servidor(es) neste processo.`,
+      `Entrei em "${guild.name}" (${guild.id}) — ${quantidade(guild.memberCount, 'membro')}. ` +
+        `Agora em ${quantidade(client.guilds.cache.size, 'servidor')} neste processo.`,
     );
 
     // Uma requisição, uma vez por servidor: a marca em `limpezas` impede
@@ -57,7 +58,7 @@ async function apresentar(guild, client) {
   await canal
     .send(
       [
-        `Olá! Sou o **${client.user.username}**, e tenho **${rotas} comandos**.`,
+        `Olá! Sou o **${client.user.username}**. Tenho **${client.commands.size} comandos principais** e **${rotas} rotas executáveis**.`,
         '',
         'Comece por `/ajuda` para ver a lista completa.',
         '',

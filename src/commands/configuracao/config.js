@@ -14,17 +14,17 @@ const TEXT_CHANNELS = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('config')
+    .setName('configurar')
     .setDescription('Configura os recursos do bot neste servidor.')
     .addSubcommand((sub) => sub.setName('ver').setDescription('Mostra a configuração atual.'))
     .addSubcommand((sub) =>
       sub
-        .setName('logs')
-        .setDescription('Define os canais de log.')
+        .setName('registros')
+        .setDescription('Define os canais que recebem os registros do bot.')
         .addStringOption((option) =>
           option
             .setName('tipo')
-            .setDescription('Qual log configurar')
+            .setDescription('Qual tipo de registro configurar')
             .setRequired(true)
             .addChoices(
               { name: 'Moderação (punições)', value: 'mod_log_channel' },
@@ -40,7 +40,7 @@ export default {
     )
     .addSubcommand((sub) =>
       sub
-        .setName('boasvindas')
+        .setName('boas-vindas')
         .setDescription('Configura a mensagem de entrada.')
         .addChannelOption((option) =>
           option
@@ -80,7 +80,7 @@ export default {
     )
     .addSubcommand((sub) =>
       sub
-        .setName('autorole')
+        .setName('cargo-automatico')
         .setDescription('Cargo dado automaticamente a quem entra.')
         .addRoleOption((option) =>
           option.setName('cargo').setDescription('Cargo (vazio para desativar)'),
@@ -124,12 +124,12 @@ export default {
     )
     .addSubcommand((sub) =>
       sub
-        .setName('starboard')
+        .setName('destaques')
         .setDescription('Mural das mensagens mais estreladas.')
         .addChannelOption((option) =>
           option
             .setName('canal')
-            .setDescription('Canal do starboard (vazio para desativar)')
+            .setDescription('Canal das mensagens destacadas (vazio para desativar)')
             .addChannelTypes(...TEXT_CHANNELS),
         )
         .addIntegerOption((option) =>
@@ -140,17 +140,17 @@ export default {
             .setMaxValue(50),
         )
         .addBooleanOption((option) =>
-          option.setName('desativar').setDescription('Desliga o starboard'),
+          option.setName('desativar').setDescription('Desliga o mural de destaques'),
         ),
     )
     .addSubcommand((sub) =>
       sub
-        .setName('tickets')
-        .setDescription('Configura o sistema de tickets.')
+        .setName('atendimento')
+        .setDescription('Configura o sistema de atendimento privado.')
         .addChannelOption((option) =>
           option
             .setName('categoria')
-            .setDescription('Categoria onde os tickets serão criados')
+            .setDescription('Categoria onde os atendimentos serão criados')
             .addChannelTypes(ChannelType.GuildCategory),
         )
         .addRoleOption((option) =>
@@ -158,7 +158,7 @@ export default {
         )
         .addChannelOption((option) =>
           option
-            .setName('log')
+            .setName('registros')
             .setDescription('Canal que recebe as transcrições')
             .addChannelTypes(...TEXT_CHANNELS),
         ),
@@ -204,14 +204,14 @@ export default {
   async execute(interaction) {
     const handlers = {
       ver: showConfig,
-      logs: setLogs,
-      boasvindas: (i) => setGreeting(i, 'welcome'),
+      registros: setLogs,
+      'boas-vindas': (i) => setGreeting(i, 'welcome'),
       saida: (i) => setGreeting(i, 'goodbye'),
-      autorole: setAutorole,
+      'cargo-automatico': setAutorole,
       niveis: setLevels,
       recompensa: setReward,
-      starboard: setStarboard,
-      tickets: setTickets,
+      destaques: setStarboard,
+      atendimento: setTickets,
       moeda: setCurrency,
       sugestoes: setSuggestions,
       prefixo: setPrefix,
@@ -238,7 +238,7 @@ async function showConfig(interaction) {
         .setTitle(`⚙️ Configuração de ${interaction.guild.name}`)
         .addFields(
           {
-            name: '📋 Logs',
+            name: '📋 Registros',
             value: [
               `Moderação: ${channelMention(settings.mod_log_channel)}`,
               `Servidor: ${channelMention(settings.server_log_channel)}`,
@@ -250,7 +250,7 @@ async function showConfig(interaction) {
             value: [
               `Boas-vindas: ${channelMention(settings.welcome_channel)}`,
               `Saída: ${channelMention(settings.goodbye_channel)}`,
-              `Autorole: ${settings.autorole ? `<@&${settings.autorole}>` : '*desativado*'}`,
+              `Cargo automático: ${settings.autorole ? `<@&${settings.autorole}>` : '*desativado*'}`,
             ].join('\n'),
             inline: true,
           },
@@ -264,12 +264,12 @@ async function showConfig(interaction) {
             ].join('\n'),
           },
           {
-            name: '⭐ Starboard',
+            name: '⭐ Destaques',
             value: `${channelMention(settings.starboard_channel)} · mínimo de ${settings.starboard_min} ⭐`,
             inline: true,
           },
           {
-            name: '🎫 Tickets',
+            name: '🎫 Atendimento',
             value: [
               `Categoria: ${settings.ticket_category ? `<#${settings.ticket_category}>` : '*nenhuma*'}`,
               `Equipe: ${settings.ticket_role ? `<@&${settings.ticket_role}>` : '*nenhuma*'}`,
@@ -290,7 +290,7 @@ async function showConfig(interaction) {
             ].join('\n'),
           },
         )
-        .setFooter({ text: 'Use /automod ver para as regras de moderação automática.' }),
+        .setFooter({ text: 'Use /auto-moderacao ver para conferir as regras automáticas.' }),
     ],
     flags: MessageFlags.Ephemeral,
   });
@@ -307,8 +307,8 @@ async function setLogs(interaction) {
     embeds: [
       embed.success(
         channel
-          ? `Log de **${label}** definido para ${channel}.`
-          : `Log de **${label}** desativado.`,
+          ? `Os registros de **${label}** serão enviados para ${channel}.`
+          : `Os registros de **${label}** foram desativados.`,
       ),
     ],
     flags: MessageFlags.Ephemeral,
@@ -376,7 +376,7 @@ async function setAutorole(interaction) {
   await interaction.reply({
     embeds: [
       embed.success(
-        role ? `Novos membros receberão o cargo ${role}.` : 'Autorole desativado.',
+        role ? `Quem entrar receberá automaticamente o cargo ${role}.` : 'O cargo automático foi desativado.',
       ),
     ],
     flags: MessageFlags.Ephemeral,
@@ -447,7 +447,7 @@ async function setStarboard(interaction) {
   if (disable) {
     setGuildConfig(interaction.guildId, { starboard_channel: null });
     return interaction.reply({
-      embeds: [embed.success('Starboard desativado.')],
+      embeds: [embed.success('O mural de destaques foi desativado.')],
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -469,8 +469,8 @@ async function setStarboard(interaction) {
     embeds: [
       embed.success(
         current.starboard_channel
-          ? `Starboard ativo em <#${current.starboard_channel}> com mínimo de **${current.starboard_min}** ⭐.`
-          : `Mínimo definido em **${current.starboard_min}** ⭐. Defina um canal para ativar.`,
+          ? `As mensagens com pelo menos **${current.starboard_min}** ⭐ aparecerão em <#${current.starboard_channel}>.`
+          : `O mínimo agora é **${current.starboard_min}** ⭐. Escolha um canal para ativar o mural.`,
       ),
     ],
     flags: MessageFlags.Ephemeral,
@@ -480,7 +480,7 @@ async function setStarboard(interaction) {
 async function setTickets(interaction) {
   const category = interaction.options.getChannel('categoria');
   const role = interaction.options.getRole('cargo');
-  const log = interaction.options.getChannel('log');
+  const log = interaction.options.getChannel('registros');
 
   const patch = {};
   if (category) patch.ticket_category = category.id;
@@ -495,7 +495,7 @@ async function setTickets(interaction) {
 
   await interaction.reply({
     embeds: [
-      embed.success('Configuração de tickets atualizada. Publique o painel com `/ticket painel`.'),
+      embed.success('Atendimento configurado. Publique o painel com `/atendimento painel`.'),
     ],
     flags: MessageFlags.Ephemeral,
   });

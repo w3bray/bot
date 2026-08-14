@@ -12,7 +12,7 @@ export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
     .setName('apostar')
-    .setDescription('Aposta moedas no cara ou coroa. Dobre ou perca tudo.')
+    .setDescription('Aposta moedas virtuais em uma rodada de cara ou coroa.')
     .addIntegerOption((option) =>
       option
         .setName('quantidade')
@@ -64,7 +64,7 @@ export default {
             value: formatMoney(updated.balance, settings.currency_name),
             inline: true,
           })
-          .setFooter({ text: 'Jogue com responsabilidade — isto é só um joguinho.' }),
+          .setFooter({ text: 'Use com responsabilidade. A aposta envolve somente a moeda virtual do servidor.' }),
       ],
     });
   },

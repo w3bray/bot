@@ -2,6 +2,7 @@ import { colors } from '../../config.js';
 import { db } from '../../lib/db.js';
 import { embed, truncate } from '../../lib/embeds.js';
 import { aviso, familia, opt, privado } from '../../lib/familia.js';
+import { quantidade } from '../../lib/portugues.js';
 
 const inserir = db.prepare(
   'INSERT INTO pessoal (guild_id, user_id, tipo, texto, criado) VALUES (?, ?, ?, ?, ?)',
@@ -171,7 +172,7 @@ export default familia({
         const { changes } = db
           .prepare("DELETE FROM pessoal WHERE guild_id = ? AND user_id = ? AND tipo = 'tarefa' AND feito = 1")
           .run(...chaves(interaction));
-        return privado(`🧹 Apaguei **${changes}** tarefa(s) concluída(s).`);
+        return privado(`🧹 Apaguei **${quantidade(changes, 'tarefa concluída', 'tarefas concluídas')}**.`);
       },
     },
     {
@@ -179,7 +180,7 @@ export default familia({
       description: 'Apaga todas as suas tarefas.',
       run: (_, interaction) => {
         const { changes } = limparTipo.run(...chaves(interaction), 'tarefa');
-        return privado(`🗑️ Apaguei **${changes}** tarefa(s).`);
+        return privado(`🗑️ Apaguei **${quantidade(changes, 'tarefa')}**.`);
       },
     },
     {
@@ -203,7 +204,7 @@ export default familia({
         if (item.feito) throw aviso('Essa meta já está concluída.');
         marcar.run(1, id, ...chaves(interaction));
         const dias = Math.floor((Date.now() - item.criado) / 86_400_000);
-        return privado(`🏆 **Meta alcançada!**\n${item.texto}\n\n_Levou ${dias} dia(s) desde que você registrou._`);
+        return privado(`🏆 **Meta alcançada!**\n${item.texto}\n\n_Você levou ${quantidade(dias, 'dia')} desde o registro._`);
       },
     },
     {
@@ -238,7 +239,7 @@ export default familia({
       },
     },
     {
-      name: 'aniversario-proximos',
+      name: 'aniversarios-proximos',
       description: 'Quem faz aniversário nos próximos dias.',
       run: (_, interaction) => {
         const hoje = new Date();
@@ -262,7 +263,7 @@ export default familia({
                 comFalta
                   .sort((a, b) => a.falta - b.falta)
                   .slice(0, 15)
-                  .map((r) => `**${r.valor}** — <@${r.user_id}> ${r.falta === 0 ? '🎉 **é hoje!**' : `em ${r.falta} dia(s)`}`)
+                  .map((r) => `**${r.valor}** — <@${r.user_id}> ${r.falta === 0 ? '🎉 **é hoje!**' : `em ${quantidade(r.falta, 'dia')}`}`)
                   .join('\n'),
               ),
           ],
@@ -313,7 +314,7 @@ export default familia({
               .setTitle('Sua área pessoal')
               .setDescription(
                 linhas
-                  .map((l) => `${rotulos[l.tipo] ?? l.tipo}: **${l.total}**${l.feitos > 0 ? ` (${l.feitos} concluída(s))` : ''}`)
+                  .map((l) => `${rotulos[l.tipo] ?? l.tipo}: **${l.total}**${l.feitos > 0 ? ` (${quantidade(l.feitos, 'concluída', 'concluídas')})` : ''}`)
                   .join('\n'),
               )
               .setFooter({ text: `Limite de ${LIMITE} itens por tipo.` }),
@@ -330,7 +331,7 @@ export default familia({
         if (confirmar !== 'APAGAR') throw aviso('Digite exatamente `APAGAR` para confirmar. Nada foi removido.');
         const itens = db.prepare('DELETE FROM pessoal WHERE guild_id = ? AND user_id = ?').run(...chaves(interaction));
         const prefs = db.prepare('DELETE FROM preferencias WHERE guild_id = ? AND user_id = ?').run(...chaves(interaction));
-        return privado(`🗑️ Apaguei **${itens.changes}** itens e **${prefs.changes}** preferência(s).`);
+        return privado(`🗑️ Apaguei **${quantidade(itens.changes, 'item', 'itens')}** e **${quantidade(prefs.changes, 'preferência')}**.`);
       },
     },
   ],

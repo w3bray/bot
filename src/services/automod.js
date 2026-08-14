@@ -119,14 +119,17 @@ async function punish(message, settings, reason) {
 
   try {
     if (settings.punishment === 'timeout' && member?.moderatable) {
-      await member.timeout(settings.timeout_minutes * 60_000, `AutoMod: ${reason}`);
+      await member.timeout(
+        settings.timeout_minutes * 60_000,
+        `Moderação automática: ${reason}`,
+      );
     } else if (settings.punishment === 'kick' && member?.kickable) {
-      await member.kick(`AutoMod: ${reason}`);
+      await member.kick(`Moderação automática: ${reason}`);
     } else if (settings.punishment === 'ban' && member?.bannable) {
-      await member.ban({ reason: `AutoMod: ${reason}` });
+      await member.ban({ reason: `Moderação automática: ${reason}` });
     }
   } catch (error) {
-    logger.debug('AutoMod não conseguiu punir:', error.message);
+    logger.debug('A moderação automática não conseguiu aplicar a punição:', error.message);
   }
 
   await createCase(message.guild, {

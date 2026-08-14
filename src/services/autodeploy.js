@@ -2,6 +2,7 @@ import { ApplicationIntegrationType, REST, Routes } from 'discord.js';
 import { config } from '../config.js';
 import { db } from '../lib/db.js';
 import { logger } from '../lib/logger.js';
+import { quantidade } from '../lib/portugues.js';
 
 const jaVarrido = db.prepare('SELECT 1 FROM limpezas WHERE guild_id = ?');
 const marcarVarrido = db.prepare(
@@ -91,7 +92,7 @@ export async function limparEscopoDeServidor(client, rest, { forcar = false } = 
         await rest.put(Routes.applicationGuildCommands(config.clientId, guild.id), { body: [] });
         resumo.limpos += 1;
         logger.info(
-          `AUTO_DEPLOY: removi ${existentes.length} comando(s) do escopo de "${guild.name}" — ` +
+          `AUTO_DEPLOY: removi ${quantidade(existentes.length, 'comando')} do escopo de "${guild.name}" — ` +
             'eram eles que apareciam duplicados.',
         );
       }
@@ -107,8 +108,8 @@ export async function limparEscopoDeServidor(client, rest, { forcar = false } = 
 
   if (resumo.verificados > 0) {
     logger.info(
-      `AUTO_DEPLOY: varredura de duplicatas — ${resumo.verificados} servidor(es) verificado(s), ` +
-        `${resumo.limpos} limpo(s), ${resumo.falhas} falha(s).`,
+      `AUTO_DEPLOY: varredura de duplicatas — ${quantidade(resumo.verificados, 'servidor verificado', 'servidores verificados')}, ` +
+        `${quantidade(resumo.limpos, 'servidor limpo', 'servidores limpos')}, ${quantidade(resumo.falhas, 'falha')}.`,
     );
   }
 
@@ -122,7 +123,7 @@ export async function limparEscopoDeServidor(client, rest, { forcar = false } = 
 export async function registrar(rest, rota, body, escopo, prefixo = 'AUTO_DEPLOY') {
   try {
     const result = await rest.put(rota, { body });
-    logger.info(`${prefixo}: ${result.length} comando(s) registrado(s) — escopo: ${escopo}.`);
+    logger.info(`${prefixo}: ${quantidade(result.length, 'comando registrado', 'comandos registrados')} — escopo: ${escopo}.`);
     return true;
   } catch (error) {
     // Falhar aqui não pode derrubar o bot: os comandos antigos continuam

@@ -4,6 +4,7 @@ import { colors, emojis } from '../config.js';
 import { embed } from '../lib/embeds.js';
 import { timestamp } from '../lib/time.js';
 import { logger } from '../lib/logger.js';
+import { quantidade } from '../lib/portugues.js';
 
 const selectGiveaway = db.prepare('SELECT * FROM giveaways WHERE message_id = ?');
 const countEntries = db.prepare(
@@ -30,7 +31,7 @@ export function giveawayEmbed(giveaway, entries) {
     .setTitle(`${emojis.gift} ${giveaway.prize}`)
     .setDescription(
       [
-        `Clique no botão abaixo para participar!`,
+        'Use o botão abaixo para participar.',
         '',
         `**Termina:** ${timestamp(giveaway.ends_at, 'R')} (${timestamp(giveaway.ends_at, 'f')})`,
         `**Ganhadores:** ${giveaway.winners}`,
@@ -40,7 +41,7 @@ export function giveawayEmbed(giveaway, entries) {
         .filter(Boolean)
         .join('\n'),
     )
-    .setFooter({ text: `${entries} participante(s)` })
+    .setFooter({ text: quantidade(entries, 'participante') })
     .setTimestamp(giveaway.ends_at);
 }
 
@@ -82,10 +83,10 @@ export async function endGiveaway(client, messageId, { reroll = false } = {}) {
     .setTitle(`${emojis.gift} Sorteio encerrado: ${giveaway.prize}`)
     .setDescription(
       winners.length > 0
-        ? `**Ganhador(es):** ${mentions}\nParabéns! 🎊`
+        ? `**${winners.length === 1 ? 'Ganhador' : 'Ganhadores'}:** ${mentions}\nParabéns! 🎊`
         : 'Ninguém participou — não há ganhadores.',
     )
-    .setFooter({ text: `${countEntries.get(messageId).total} participante(s)` })
+    .setFooter({ text: quantidade(countEntries.get(messageId).total, 'participante') })
     .setTimestamp();
 
   if (message) {

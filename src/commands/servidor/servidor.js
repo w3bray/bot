@@ -1,15 +1,8 @@
-import { ChannelType, GuildVerificationLevel, PermissionFlagsBits } from 'discord.js';
+import { ChannelType, PermissionFlagsBits } from 'discord.js';
 import { colors } from '../../config.js';
 import { embed, truncate } from '../../lib/embeds.js';
 import { aviso, bloco, familia, opt } from '../../lib/familia.js';
-
-const NIVEL = {
-  [GuildVerificationLevel.None]: 'Nenhum',
-  [GuildVerificationLevel.Low]: 'Baixo (e-mail verificado)',
-  [GuildVerificationLevel.Medium]: 'Médio (5 min de conta)',
-  [GuildVerificationLevel.High]: 'Alto (10 min no servidor)',
-  [GuildVerificationLevel.VeryHigh]: 'Muito alto (telefone verificado)',
-};
+import { quantidade as qtd } from '../../lib/portugues.js';
 
 const lista = (itens, vazio = '_nenhum_') =>
   itens.length === 0 ? vazio : truncate(itens.join(' · '), 4000);
@@ -37,33 +30,25 @@ export default familia({
   dm: false,
   subs: [
     {
-      name: 'resumo',
-      description: 'Visão geral do servidor.',
+      name: 'proprietario',
+      description: 'Mostra o proprietário atual e os principais cargos dessa pessoa.',
       run: async (_, interaction) => {
-        const { guild } = interaction;
-        const canais = guild.channels.cache;
-        const dono = await guild.fetchOwner().catch(() => null);
+        const dono = await interaction.guild.fetchOwner().catch(() => null);
+        if (!dono) throw aviso('Não consegui consultar quem é o proprietário do servidor.');
+        const cargos = [...dono.roles.cache.values()]
+          .filter((cargo) => cargo.id !== interaction.guild.id)
+          .sort((a, b) => b.position - a.position)
+          .slice(0, 10);
         return {
           embeds: [
-            embed
-              .base(colors.primary)
-              .setTitle(guild.name)
-              .setThumbnail(guild.iconURL({ size: 256 }))
-              .addFields(
-                { name: 'Dono', value: dono ? `${dono.user.tag}` : '—', inline: true },
-                { name: 'Membros', value: `${guild.memberCount.toLocaleString('pt-BR')}`, inline: true },
-                { name: 'Criado', value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:D>`, inline: true },
-                {
-                  name: 'Canais',
-                  value: `${canais.filter((c) => c.type === ChannelType.GuildText).size} texto · ${canais.filter((c) => c.type === ChannelType.GuildVoice).size} voz · ${canais.filter((c) => c.type === ChannelType.GuildCategory).size} categorias`,
-                  inline: true,
-                },
-                { name: 'Cargos', value: `${guild.roles.cache.size - 1}`, inline: true },
-                { name: 'Emojis', value: `${guild.emojis.cache.size}`, inline: true },
-                { name: 'Verificação', value: NIVEL[guild.verificationLevel] ?? '—', inline: true },
-                { name: 'Impulsos', value: `${guild.premiumSubscriptionCount ?? 0} (nível ${guild.premiumTier})`, inline: true },
-                { name: 'ID', value: `\`${guild.id}\``, inline: true },
-              ),
+            embed.base(colors.primary)
+              .setTitle(`Proprietário de ${interaction.guild.name}`)
+              .setThumbnail(dono.displayAvatarURL({ size: 256 }))
+              .setDescription(`${dono}\n\`${dono.id}\``)
+              .addFields({
+                name: 'Principais cargos',
+                value: cargos.length ? cargos.join(' · ') : 'Nenhum cargo além de @everyone.',
+              }),
           ],
         };
       },
@@ -155,7 +140,7 @@ export default familia({
       },
     },
     {
-      name: 'emoji-info',
+      name: 'info-emoji',
       description: 'Detalhes de um emoji do servidor.',
       options: [opt.texto('emoji', 'Cole o emoji aqui', true, { max: 100 })],
       run: ({ emoji }, interaction) => {
@@ -280,41 +265,35 @@ export default familia({
         return {
           embeds: [
             embed.base(cargo.color || colors.primary)
-              .setTitle(`${cargo.name} — ${nomes.length} membro(s)`)
+              .setTitle(`${cargo.name} — ${qtd(nomes.length, 'membro')}`)
               .setDescription(lista(nomes.slice(0, 50))),
           ],
         };
       },
     },
     {
-      name: 'cargo-info',
-      description: 'Detalhes de um cargo.',
-      options: [opt.cargo('cargo', 'O cargo', true)],
-      run: ({ cargo }) => {
-        const permissoes = cargo.permissions.toArray();
+      name: 'hierarquia-cargos',
+      description: 'Mostra a ordem dos cargos e quantos membros há em cada um.',
+      options: [opt.inteiro('quantidade', 'Quantos cargos mostrar', false, { min: 1, max: 25 })],
+      run: ({ quantidade }, interaction) => {
+        const cargos = [...interaction.guild.roles.cache.values()]
+          .filter((cargo) => cargo.id !== interaction.guild.id)
+          .sort((a, b) => b.position - a.position)
+          .slice(0, quantidade ?? 15);
         return {
           embeds: [
-            embed.base(cargo.color || colors.neutral)
-              .setTitle(cargo.name)
-              .addFields(
-                { name: 'ID', value: `\`${cargo.id}\``, inline: true },
-                { name: 'Cor', value: cargo.hexColor, inline: true },
-                { name: 'Membros', value: `${cargo.members.size}`, inline: true },
-                { name: 'Posição', value: `${cargo.position}`, inline: true },
-                { name: 'Separado', value: cargo.hoist ? 'sim' : 'não', inline: true },
-                { name: 'Mencionável', value: cargo.mentionable ? 'sim' : 'não', inline: true },
-                { name: 'Criado', value: `<t:${Math.floor(cargo.createdTimestamp / 1000)}:D>`, inline: true },
-                {
-                  name: `Permissões (${permissoes.length})`,
-                  value: truncate(permissoes.length ? permissoes.map((p) => `\`${p}\``).join(' ') : '_nenhuma_', 1024),
-                },
+            embed.base(colors.primary)
+              .setTitle('Hierarquia de cargos')
+              .setDescription(
+                cargos.map((cargo, i) => `**${i + 1}.** ${cargo} — ${qtd(cargo.members.size, 'membro')}`).join('\n') ||
+                  'Este servidor ainda não tem cargos próprios.',
               ),
           ],
         };
       },
     },
     {
-      name: 'canal-info',
+      name: 'info-canal',
       description: 'Detalhes de um canal.',
       options: [opt.canal('canal', 'O canal (padrão: este)', false)],
       run: ({ canal }, interaction) => {
@@ -347,7 +326,7 @@ export default familia({
     },
     {
       name: 'estatisticas',
-      description: 'Distribuição de membros, bots e status.',
+      description: 'Distribuição de membros, bots e presença.',
       run: async (_, interaction) => {
         const todos = await membros(interaction.guild);
         const bots = todos.filter((m) => m.user.bot).size;
@@ -462,7 +441,7 @@ export default familia({
         const linhas = [...convites.values()]
           .sort((a, b) => b.uses - a.uses)
           .slice(0, 20)
-          .map((c) => `\`${c.code}\` — ${c.uses} uso(s) · ${c.inviter ? c.inviter.tag : 'desconhecido'}`);
+          .map((c) => `\`${c.code}\` — ${qtd(c.uses, 'uso')} · ${c.inviter ? c.inviter.tag : 'criador desconhecido'}`);
         return {
           embeds: [
             embed.base(colors.primary)

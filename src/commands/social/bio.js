@@ -5,12 +5,12 @@ import { updateProfile } from '../../services/profiles.js';
 export default {
   cooldown: 10,
   data: new SlashCommandBuilder()
-    .setName('bio')
-    .setDescription('Define o texto que aparece no seu /perfil.')
+    .setName('biografia')
+    .setDescription('Define a biografia exibida no seu perfil.')
     .addStringOption((option) =>
       option
         .setName('texto')
-        .setDescription('Sua bio (deixe vazio para apagar)')
+        .setDescription('Sua biografia (deixe vazio para apagar)')
         .setMaxLength(200),
     )
     .setContexts(InteractionContextType.Guild),
@@ -22,7 +22,9 @@ export default {
 
     await interaction.reply({
       embeds: [
-        embed.success(text ? `Bio atualizada:\n> ${text}` : 'Sua bio foi apagada.'),
+        embed.success(
+          text ? `Biografia atualizada:\n> ${text}` : 'Sua biografia foi apagada.',
+        ),
       ],
       flags: MessageFlags.Ephemeral,
     });

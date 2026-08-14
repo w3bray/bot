@@ -24,7 +24,7 @@ async function create(interaction) {
   if (!result.ok) return interaction.editReply({ embeds: [embed.error(result.reason)] });
 
   await interaction.editReply({
-    embeds: [embed.success(`Seu ticket foi criado: ${result.channel}`)],
+    embeds: [embed.success(`Seu atendimento foi criado: ${result.channel}`)],
   });
 }
 
@@ -32,7 +32,7 @@ async function claim(interaction) {
   const ticket = getTicket(interaction.channelId);
   if (!ticket) {
     return interaction.reply({
-      embeds: [embed.error('Este canal não é um ticket ativo.')],
+      embeds: [embed.error('Este canal não é um atendimento ativo.')],
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -44,14 +44,14 @@ async function claim(interaction) {
 
   if (!isStaff) {
     return interaction.reply({
-      embeds: [embed.error('Apenas a equipe de atendimento pode assumir tickets.')],
+      embeds: [embed.error('Só a equipe pode assumir atendimentos.')],
       flags: MessageFlags.Ephemeral,
     });
   }
 
   if (ticket.claimed_by) {
     return interaction.reply({
-      embeds: [embed.warning(`Este ticket já foi assumido por <@${ticket.claimed_by}>.`)],
+      embeds: [embed.warning(`Este atendimento já foi assumido por <@${ticket.claimed_by}>.`)],
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -70,7 +70,7 @@ async function close(interaction) {
   const ticket = getTicket(interaction.channelId);
   if (!ticket) {
     return interaction.reply({
-      embeds: [embed.error('Este canal não é um ticket ativo.')],
+      embeds: [embed.error('Este canal não é um atendimento ativo.')],
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -82,7 +82,7 @@ async function close(interaction) {
 
   if (ticket.user_id !== interaction.user.id && !isStaff) {
     return interaction.reply({
-      embeds: [embed.error('Só quem abriu o ticket ou a equipe pode fechá-lo.')],
+      embeds: [embed.error('Só quem abriu o atendimento ou a equipe pode fechá-lo.')],
       flags: MessageFlags.Ephemeral,
     });
   }
@@ -95,7 +95,7 @@ async function close(interaction) {
   await interaction.followUp({
     embeds: [
       embed.warning(
-        `Ticket fechado por ${interaction.user}. O canal será apagado em 5 segundos e a transcrição enviada.`,
+        `Atendimento encerrado por ${interaction.user}. O canal será apagado em 5 segundos e a transcrição enviada.`,
       ),
     ],
   });

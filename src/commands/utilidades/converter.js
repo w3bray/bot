@@ -183,18 +183,18 @@ export default familia({
   description: 'Converte unidades de medida, bases numéricas e formatos.',
   cooldown: 3,
   subs: [
-    conversor('distancia', 'Metros, milhas, pés, polegadas…'),
-    conversor('peso', 'Gramas, quilos, libras, arrobas…'),
+    conversor('distancia', 'Converte distâncias entre metros, milhas, pés e polegadas.'),
+    conversor('peso', 'Converte massas entre gramas, quilos, libras e arrobas.'),
     conversor('volume', 'Litros, galões, xícaras…'),
     conversor('area', 'Metros quadrados, hectares, acres, alqueires…'),
-    conversor('velocidade', 'km/h, m/s, milhas por hora, nós, mach…'),
+    conversor('velocidade', 'Converte km/h, m/s, milhas por hora, nós e mach.'),
     conversor('tempo', 'Segundos, horas, dias, meses, anos…'),
     conversor('dados', 'Bytes, megabytes, gibibytes…'),
     conversor('energia', 'Joules, calorias, quilowatt-hora…'),
     conversor('pressao', 'Pascal, bar, atmosfera, psi…'),
     {
       name: 'temperatura',
-      description: 'Celsius, Fahrenheit e Kelvin.',
+      description: 'Converte temperaturas entre Celsius, Fahrenheit e Kelvin.',
       options: [
         opt.numero('valor', 'O valor a converter'),
         {
@@ -240,7 +240,7 @@ export default familia({
     },
     {
       name: 'romano',
-      description: 'Número comum para algarismo romano.',
+      description: 'Converte um número decimal em algarismo romano.',
       options: [opt.inteiro('numero', 'De 1 a 3999', true, { min: 1, max: 3999 })],
       run: ({ numero }) => {
         let resto = numero;
@@ -277,7 +277,7 @@ export default familia({
     conversor('cozinha', 'Xícaras, colheres, mililitros — medidas de receita.'),
     {
       name: 'combustivel',
-      description: 'km/l, milhas por galão e litros por 100 km.',
+      description: 'Converte km/l, milhas por galão e litros por 100 km.',
       options: [
         opt.numero('valor', 'O consumo'),
         { kind: 'string', name: 'de', description: 'Unidade de origem', required: true, choices: CONSUMO },

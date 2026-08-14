@@ -3,6 +3,7 @@ import { db } from '../../lib/db.js';
 import { colors } from '../../config.js';
 import { embed, replyError, truncate } from '../../lib/embeds.js';
 import { timestamp } from '../../lib/time.js';
+import { quantidade } from '../../lib/portugues.js';
 
 export default {
   cooldown: 3,
@@ -73,7 +74,7 @@ async function listWarnings(interaction) {
         .setTitle(`⚠️ Advertências de ${target.tag}`)
         .setDescription(list.join('\n\n'))
         .setThumbnail(target.displayAvatarURL({ size: 128 }))
-        .setFooter({ text: `${warnings.length} advertência(s) ativa(s)` }),
+        .setFooter({ text: quantidade(warnings.length, 'advertência ativa', 'advertências ativas') }),
     ],
   });
 }
@@ -116,7 +117,7 @@ async function clearWarnings(interaction) {
 
   await interaction.reply({
     embeds: [
-      embed.success(`**${result.changes}** advertência(s) de **${target.tag}** foram removidas.`),
+      embed.success(`Removi **${quantidade(result.changes, 'advertência')}** de **${target.tag}**.`),
     ],
   });
 }

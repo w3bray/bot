@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { ShardingManager } from 'discord.js';
 import { config } from './config.js';
 import { logger } from './lib/logger.js';
+import { quantidade } from './lib/portugues.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const botFile = path.join(here, 'index.js');
@@ -38,7 +39,7 @@ async function spawnShards() {
 
   try {
     const shards = await manager.spawn();
-    logger.info(`${shards.size} shard(s) no ar.`);
+    logger.info(`${quantidade(shards.size, 'processo')} no ar.`);
   } catch (error) {
     logger.error('Falha ao iniciar os shards:', error);
     process.exit(1);

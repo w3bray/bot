@@ -3,6 +3,7 @@ import { getGuildConfig } from '../../lib/db.js';
 import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { formatDuration, timestamp } from '../../lib/time.js';
+import { quantidade } from '../../lib/portugues.js';
 import {
   DAILY_BASE,
   DAILY_COOLDOWN,
@@ -18,7 +19,7 @@ const STREAK_GRACE = 48 * 60 * 60 * 1000;
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('daily')
+    .setName('diario')
     .setDescription('Coleta sua recompensa diária de moedas.')
     .setContexts(InteractionContextType.Guild),
 
@@ -58,7 +59,7 @@ export default {
           .addFields(
             { name: 'Base', value: `${DAILY_BASE.toLocaleString('pt-BR')}`, inline: true },
             {
-              name: `Bônus de sequência (${streak} dia(s))`,
+              name: `Bônus de sequência (${quantidade(streak, 'dia')})`,
               value: `+${bonus.toLocaleString('pt-BR')}`,
               inline: true,
             },

@@ -16,23 +16,23 @@ import { closeTicket, getTicket, openTicket } from '../../services/tickets.js';
 export default {
   cooldown: 5,
   data: new SlashCommandBuilder()
-    .setName('ticket')
-    .setDescription('Sistema de atendimento por tickets.')
+    .setName('atendimento')
+    .setDescription('Abre e gerencia atendimentos privados com a equipe.')
     .addSubcommand((sub) =>
       sub
         .setName('abrir')
-        .setDescription('Abre um ticket de atendimento.')
+        .setDescription('Abre um atendimento privado.')
         .addStringOption((option) =>
           option.setName('assunto').setDescription('Resumo do seu problema').setMaxLength(200),
         ),
     )
     .addSubcommand((sub) =>
-      sub.setName('fechar').setDescription('Fecha o ticket atual (use dentro do canal do ticket).'),
+      sub.setName('fechar').setDescription('Fecha o atendimento atual (use dentro do canal dele).'),
     )
     .addSubcommand((sub) =>
       sub
         .setName('adicionar')
-        .setDescription('Adiciona um membro ao ticket atual.')
+        .setDescription('Adiciona um membro ao atendimento atual.')
         .addUserOption((option) =>
           option.setName('usuario').setDescription('Quem adicionar').setRequired(true),
         ),
@@ -40,7 +40,7 @@ export default {
     .addSubcommand((sub) =>
       sub
         .setName('painel')
-        .setDescription('Publica o painel com o botão de abrir ticket. (Gerenciar Servidor)')
+        .setDescription('Publica o painel para abrir atendimentos. (Gerenciar Servidor)')
         .addChannelOption((option) =>
           option
             .setName('canal')
@@ -78,13 +78,13 @@ async function open(interaction) {
   if (!result.ok) return interaction.editReply({ embeds: [embed.error(result.reason)] });
 
   await interaction.editReply({
-    embeds: [embed.success(`Seu ticket foi criado: ${result.channel}`)],
+    embeds: [embed.success(`Seu atendimento foi criado: ${result.channel}`)],
   });
 }
 
 async function close(interaction) {
   const ticket = getTicket(interaction.channelId);
-  if (!ticket) return replyError(interaction, 'Este comando só funciona dentro de um canal de ticket.');
+  if (!ticket) return replyError(interaction, 'Esse comando só funciona dentro de um canal de atendimento.');
 
   const settings = getGuildConfig(interaction.guildId);
   const isStaff =
@@ -92,11 +92,11 @@ async function close(interaction) {
     (settings.ticket_role && interaction.member.roles.cache.has(settings.ticket_role));
 
   if (ticket.user_id !== interaction.user.id && !isStaff) {
-    return replyError(interaction, 'Só quem abriu o ticket ou a equipe pode fechá-lo.');
+    return replyError(interaction, 'Só quem abriu o atendimento ou a equipe pode fechá-lo.');
   }
 
   await interaction.reply({
-    embeds: [embed.warning('Fechando o ticket em 5 segundos… A transcrição será enviada.')],
+    embeds: [embed.warning('Fechando o atendimento em 5 segundos… A transcrição será enviada.')],
   });
 
   await closeTicket(interaction.channel, interaction.user);
@@ -105,7 +105,7 @@ async function close(interaction) {
 
 async function addMember(interaction) {
   const ticket = getTicket(interaction.channelId);
-  if (!ticket) return replyError(interaction, 'Este comando só funciona dentro de um canal de ticket.');
+  if (!ticket) return replyError(interaction, 'Esse comando só funciona dentro de um canal de atendimento.');
 
   const target = interaction.options.getUser('usuario');
   const member = await interaction.guild.members.fetch(target.id).catch(() => null);
@@ -122,7 +122,7 @@ async function addMember(interaction) {
   }
 
   await interaction.reply({
-    embeds: [embed.success(`${target} foi adicionado ao ticket.`)],
+    embeds: [embed.success(`${target} foi adicionado ao atendimento.`)],
   });
 }
 
@@ -135,18 +135,18 @@ async function publishPanel(interaction) {
   const title = interaction.options.getString('titulo') ?? `${emojis.ticket} Central de Atendimento`;
   const description =
     interaction.options.getString('descricao') ??
-    'Precisa de ajuda? Clique no botão abaixo para abrir um ticket privado com a equipe.';
+    'Precisa de ajuda? Use o botão abaixo para abrir um atendimento privado com a equipe.';
 
   const panel = embed
     .base(colors.primary)
     .setTitle(title)
     .setDescription(description)
-    .setFooter({ text: 'Abuso do sistema de tickets pode resultar em punição.' });
+    .setFooter({ text: 'O uso indevido do atendimento pode resultar em punição.' });
 
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId('ticket:create')
-      .setLabel('Abrir ticket')
+      .setLabel('Abrir atendimento')
       .setEmoji(emojis.ticket)
       .setStyle(ButtonStyle.Primary),
   );

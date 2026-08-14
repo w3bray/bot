@@ -38,10 +38,13 @@ async function clearOwnAfk(message) {
 
   deleteAfk.run(message.guild.id, message.author.id);
 
-  // Restaura o apelido, se o bot foi quem colocou o prefixo [AFK].
-  if (message.member.displayName.startsWith('[AFK] ')) {
+  // Restaura o apelido, incluindo o prefixo usado por versões antigas.
+  const prefixo = ['[Ausente] ', '[AFK] '].find((item) =>
+    message.member.displayName.startsWith(item),
+  );
+  if (prefixo) {
     await message.member
-      .setNickname(message.member.displayName.slice(6))
+      .setNickname(message.member.displayName.slice(prefixo.length))
       .catch(() => null);
   }
 

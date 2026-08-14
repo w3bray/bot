@@ -5,7 +5,7 @@ import { embed } from '../../lib/embeds.js';
 export default {
   cooldown: 10,
   data: new SlashCommandBuilder()
-    .setName('afk')
+    .setName('ausente')
     .setDescription('Marca você como ausente. Quem te mencionar será avisado.')
     .addStringOption((option) =>
       option.setName('motivo').setDescription('Por que você está saindo?').setMaxLength(200),
@@ -21,9 +21,12 @@ export default {
     ).run(interaction.guildId, interaction.user.id, reason, Date.now());
 
     // Marca visualmente no apelido quando o bot tem permissão para isso.
-    if (interaction.member.manageable && !interaction.member.displayName.startsWith('[AFK] ')) {
+    if (
+      interaction.member.manageable &&
+      !interaction.member.displayName.startsWith('[Ausente] ')
+    ) {
       await interaction.member
-        .setNickname(`[AFK] ${interaction.member.displayName}`.slice(0, 32))
+        .setNickname(`[Ausente] ${interaction.member.displayName}`.slice(0, 32))
         .catch(() => null);
     }
 
@@ -31,8 +34,8 @@ export default {
       embeds: [
         embed.success(
           reason
-            ? `Você está ausente: **${reason}**\nSeu status some assim que você mandar uma mensagem.`
-            : 'Você está ausente. Seu status some assim que você mandar uma mensagem.',
+            ? `Você está ausente: **${reason}**\nO aviso some assim que você mandar uma mensagem.`
+            : 'Você está ausente. O aviso some assim que você mandar uma mensagem.',
         ),
       ],
       flags: MessageFlags.Ephemeral,

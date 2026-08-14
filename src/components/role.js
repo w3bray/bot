@@ -14,7 +14,7 @@ export default {
 
     const roleId = args[0];
 
-    // Só cargos registrados por /painelcargos podem ser distribuídos assim.
+    // Só cargos registrados por /painel-cargos podem ser distribuídos assim.
     const registered = selectButton.get(interaction.message.id, roleId);
     if (!registered) {
       return interaction.reply({

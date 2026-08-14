@@ -3,13 +3,13 @@ import { colors } from '../../config.js';
 import { embed, truncate } from '../../lib/embeds.js';
 import { aviso, bloco, familia, opt } from '../../lib/familia.js';
 import { checkHierarchy } from '../../lib/permissions.js';
+import { quantidade as qtd } from '../../lib/portugues.js';
 
 const NOMES = {
   [PermissionFlagsBits.ManageMessages]: 'Gerenciar Mensagens',
   [PermissionFlagsBits.ManageChannels]: 'Gerenciar Canais',
   [PermissionFlagsBits.ManageRoles]: 'Gerenciar Cargos',
-  [PermissionFlagsBits.ManageNicknames]: 'Gerenciar Apelidos',
-  [PermissionFlagsBits.ModerateMembers]: 'Moderar Membros',
+  [PermissionFlagsBits.MoveMembers]: 'Mover Membros',
   [PermissionFlagsBits.KickMembers]: 'Expulsar Membros',
   [PermissionFlagsBits.BanMembers]: 'Banir Membros',
   [PermissionFlagsBits.ManageGuild]: 'Gerenciar Servidor',
@@ -34,42 +34,56 @@ const MEMBRO = opt.usuario('membro', 'O membro', true);
 const MOTIVO = opt.texto('motivo', 'O motivo', false, { max: 400 });
 const CANAL = opt.canal('canal', 'O canal (padrão: este)', false);
 
-const textoOuVoz = (canal) => {
-  if (canal && ![ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildVoice].includes(canal.type)) {
-    throw aviso('Escolha um canal de texto ou de voz.');
-  }
-};
-
 export default familia({
-  name: 'mod',
-  description: 'Ferramentas de moderação: limpeza, trancar canais, cargos em massa e auditoria.',
+  name: 'moderacao',
+  description: 'Reúne ferramentas avançadas de limpeza, cargos e auditoria.',
   cooldown: 4,
   dm: false,
   subs: [
     {
-      name: 'trancar',
-      description: 'Impede que os membros falem no canal.',
-      options: [CANAL, MOTIVO],
-      run: async ({ canal, motivo }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageChannels);
-        const alvo = canal ?? interaction.channel;
-        textoOuVoz(alvo);
-        await alvo.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: false }, {
-          reason: `${interaction.user.tag}: ${motivo ?? 'sem motivo'}`,
-        });
-        return `🔒 **${alvo}** trancado.${motivo ? `\nMotivo: ${motivo}` : ''}`;
+      name: 'limpar-reacoes',
+      description: 'Remove as reações das mensagens recentes do canal.',
+      options: [opt.inteiro('quantidade', 'Quantas mensagens verificar', true, { min: 1, max: 100 })],
+      run: async ({ quantidade }, interaction) => {
+        exigir(interaction, PermissionFlagsBits.ManageMessages);
+        const mensagens = await interaction.channel.messages.fetch({ limit: quantidade });
+        const comReacoes = [...mensagens.filter((mensagem) => mensagem.reactions.cache.size > 0).values()];
+        let limpas = 0;
+        for (const mensagem of comReacoes) {
+          const ok = await mensagem.reactions.removeAll().then(() => true).catch(() => false);
+          if (ok) limpas += 1;
+        }
+        return `🧹 Removi as reações de **${qtd(limpas, 'mensagem', 'mensagens')}**.`;
       },
     },
     {
-      name: 'destrancar',
-      description: 'Libera a fala no canal de novo.',
-      options: [CANAL],
-      run: async ({ canal }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageChannels);
-        const alvo = canal ?? interaction.channel;
-        textoOuVoz(alvo);
-        await alvo.permissionOverwrites.edit(interaction.guild.roles.everyone, { SendMessages: null });
-        return `🔓 **${alvo}** destrancado.`;
+      name: 'fixar-mensagem',
+      description: 'Fixa ou desafixa uma mensagem pelo ID.',
+      options: [
+        opt.texto('mensagem', 'ID da mensagem', true, { max: 30 }),
+        {
+          kind: 'string',
+          name: 'acao',
+          description: 'O que fazer',
+          required: true,
+          choices: [
+            { name: 'Fixar', value: 'fixar' },
+            { name: 'Desafixar', value: 'desafixar' },
+          ],
+        },
+      ],
+      run: async ({ mensagem, acao }, interaction) => {
+        exigir(interaction, PermissionFlagsBits.ManageMessages);
+        const alvo = await interaction.channel.messages.fetch(mensagem).catch(() => null);
+        if (!alvo) throw aviso('Não encontrei essa mensagem neste canal.');
+        if (acao === 'fixar') {
+          if (alvo.pinned) throw aviso('Essa mensagem já está fixada.');
+          await alvo.pin(`por ${interaction.user.tag}`);
+          return `📌 Mensagem fixada: ${alvo.url}`;
+        }
+        if (!alvo.pinned) throw aviso('Essa mensagem não está fixada.');
+        await alvo.unpin(`por ${interaction.user.tag}`);
+        return `📌 Mensagem desafixada: ${alvo.url}`;
       },
     },
     {
@@ -114,34 +128,40 @@ export default familia({
       },
     },
     {
-      name: 'lento',
-      description: 'Define o modo lento do canal.',
-      options: [opt.inteiro('segundos', 'De 0 (desliga) a 21600', true, { min: 0, max: 21600 }), CANAL],
-      run: async ({ segundos, canal }, interaction) => {
+      name: 'renomear-canal',
+      description: 'Muda o nome de um canal.',
+      options: [
+        opt.texto('nome', 'Novo nome do canal', true, { min: 1, max: 100 }),
+        CANAL,
+      ],
+      run: async ({ nome, canal }, interaction) => {
         exigir(interaction, PermissionFlagsBits.ManageChannels);
         const alvo = canal ?? interaction.channel;
-        await alvo.setRateLimitPerUser(segundos);
-        return segundos === 0
-          ? `⏱️ Modo lento desligado em **${alvo}**.`
-          : `⏱️ Modo lento de **${segundos}s** em **${alvo}**.`;
+        const anterior = alvo.name;
+        await alvo.setName(nome, `por ${interaction.user.tag}`);
+        return `✏️ Canal renomeado de **${anterior}** para **${alvo.name}**.`;
       },
     },
     {
-      name: 'limpar-de',
-      description: 'Apaga as mensagens recentes de um membro.',
-      options: [MEMBRO, opt.inteiro('quantidade', 'Quantas procurar (até 100)', true, { min: 1, max: 100 })],
-      run: async ({ membro, quantidade }, interaction) => {
+      name: 'limpar-repetidas',
+      description: 'Apaga mensagens repetidas enviadas pela mesma pessoa.',
+      options: [opt.inteiro('quantidade', 'Quantas mensagens verificar', true, { min: 2, max: 100 })],
+      run: async ({ quantidade }, interaction) => {
         exigir(interaction, PermissionFlagsBits.ManageMessages);
         await interaction.deferReply({ flags: 64 });
-        const mensagens = await interaction.channel.messages.fetch({ limit: 100 });
-        const doAlvo = [...mensagens.filter((m) => m.author.id === membro.id).values()].slice(0, quantidade);
-        const apagadas = await interaction.channel.bulkDelete(doAlvo, true).catch(() => null);
+        const mensagens = await interaction.channel.messages.fetch({ limit: quantidade });
+        const vistas = new Set();
+        const repetidas = [];
+        for (const mensagem of mensagens.values()) {
+          const conteudo = mensagem.content.trim().toLocaleLowerCase('pt-BR');
+          if (!conteudo) continue;
+          const chave = `${mensagem.author.id}:${conteudo}`;
+          if (vistas.has(chave)) repetidas.push(mensagem);
+          else vistas.add(chave);
+        }
+        const apagadas = await interaction.channel.bulkDelete(repetidas, true).catch(() => null);
         await interaction.editReply({
-          embeds: [
-            apagadas
-              ? embed.success(`🧹 Apaguei **${apagadas.size}** mensagens de ${membro}.`)
-              : embed.error('Não consegui apagar. Mensagens com mais de 14 dias não podem ser removidas em massa.'),
-          ],
+          embeds: [embed.success(`🧹 Apaguei **${qtd(apagadas?.size ?? 0, 'mensagem repetida', 'mensagens repetidas')}**.`)],
         });
         return null;
       },
@@ -215,33 +235,34 @@ export default familia({
       },
     },
     {
-      name: 'cargo-dar',
-      description: 'Dá um cargo a um membro.',
-      options: [MEMBRO, opt.cargo('cargo', 'O cargo', true)],
-      run: async ({ membro, cargo }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageRoles);
-        const alvo = await interaction.guild.members.fetch(membro.id);
-        if (cargo.position >= interaction.guild.members.me.roles.highest.position) {
-          throw aviso('Esse cargo está acima do meu — mova o meu para cima na lista.');
-        }
-        if (alvo.roles.cache.has(cargo.id)) throw aviso(`${alvo} já tem o cargo ${cargo}.`);
-        await alvo.roles.add(cargo, `por ${interaction.user.tag}`);
-        return `✅ Dei o cargo ${cargo} para ${alvo}.`;
+      name: 'cargo-contar',
+      description: 'Conta pessoas e bots que têm um cargo.',
+      options: [opt.cargo('cargo', 'O cargo', true)],
+      run: async ({ cargo }, interaction) => {
+        await interaction.guild.members.fetch().catch(() => null);
+        const membros = [...cargo.members.values()];
+        const bots = membros.filter((membro) => membro.user.bot).length;
+        return [
+          `${cargo} tem **${qtd(membros.length, 'membro')}**.`,
+          `Pessoas: **${membros.length - bots}**`,
+          `Bots: **${bots}**`,
+        ].join('\n');
       },
     },
     {
-      name: 'cargo-tirar',
-      description: 'Tira um cargo de um membro.',
-      options: [MEMBRO, opt.cargo('cargo', 'O cargo', true)],
-      run: async ({ membro, cargo }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageRoles);
-        const alvo = await interaction.guild.members.fetch(membro.id);
-        if (cargo.position >= interaction.guild.members.me.roles.highest.position) {
-          throw aviso('Esse cargo está acima do meu — mova o meu para cima na lista.');
-        }
-        if (!alvo.roles.cache.has(cargo.id)) throw aviso(`${alvo} não tem o cargo ${cargo}.`);
-        await alvo.roles.remove(cargo, `por ${interaction.user.tag}`);
-        return `✅ Tirei o cargo ${cargo} de ${alvo}.`;
+      name: 'cargo-sem',
+      description: 'Lista quem ainda não tem um cargo específico.',
+      options: [opt.cargo('cargo', 'O cargo', true)],
+      run: async ({ cargo }, interaction) => {
+        const todos = await interaction.guild.members.fetch();
+        const semCargo = [...todos.filter((membro) => !membro.user.bot && !membro.roles.cache.has(cargo.id)).values()];
+        return {
+          embeds: [
+            embed.base(colors.primary)
+              .setTitle(`Sem o cargo ${cargo.name} (${semCargo.length})`)
+              .setDescription(truncate(semCargo.slice(0, 60).map((membro) => `${membro}`).join(' · ') || 'Ninguém.', 4000)),
+          ],
+        };
       },
     },
     {
@@ -292,44 +313,53 @@ export default familia({
       },
     },
     {
-      name: 'apelido-limpar',
-      description: 'Remove o apelido de um membro.',
-      options: [MEMBRO],
-      run: async ({ membro }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageNicknames);
-        const alvo = await interaction.guild.members.fetch(membro.id);
-        alvoValido(interaction, alvo);
-        await alvo.setNickname(null, `por ${interaction.user.tag}`);
-        return `✅ Apelido de ${alvo} removido.`;
+      name: 'apelidos-listar',
+      description: 'Lista os membros que usam apelido no servidor.',
+      run: async (_, interaction) => {
+        const todos = await interaction.guild.members.fetch();
+        const apelidados = [...todos.filter((membro) => membro.nickname).values()];
+        return {
+          embeds: [
+            embed.base(colors.primary)
+              .setTitle(`Apelidos em uso (${apelidados.length})`)
+              .setDescription(
+                truncate(
+                  apelidados.slice(0, 60).map((membro) => `${membro.user.username} → **${membro.nickname}**`).join('\n') ||
+                    'Ninguém está usando apelido.',
+                  4000,
+                ),
+              ),
+          ],
+        };
       },
     },
     {
-      name: 'silenciar',
-      description: 'Silencia (castigo) por um tempo.',
-      options: [
-        MEMBRO,
-        opt.inteiro('minutos', 'De 1 a 40320 (28 dias)', true, { min: 1, max: 40320 }),
-        MOTIVO,
-      ],
-      run: async ({ membro, minutos, motivo }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ModerateMembers);
+      name: 'voz-desconectar',
+      description: 'Desconecta um membro do canal de voz.',
+      options: [MEMBRO, MOTIVO],
+      run: async ({ membro, motivo }, interaction) => {
+        exigir(interaction, PermissionFlagsBits.MoveMembers);
         const alvo = await interaction.guild.members.fetch(membro.id);
         alvoValido(interaction, alvo);
-        await alvo.timeout(minutos * 60_000, motivo ?? `por ${interaction.user.tag}`);
-        const fim = Math.floor((Date.now() + minutos * 60_000) / 1000);
-        return `🔇 ${alvo} silenciado até <t:${fim}:t> (<t:${fim}:R>).${motivo ? `\nMotivo: ${motivo}` : ''}`;
+        if (!alvo.voice.channel) throw aviso(`${alvo} não está em um canal de voz.`);
+        await alvo.voice.disconnect(motivo ?? `por ${interaction.user.tag}`);
+        return `🔌 ${alvo} foi desconectado do canal de voz.${motivo ? `\nMotivo: ${motivo}` : ''}`;
       },
     },
     {
-      name: 'dessilenciar',
-      description: 'Tira o castigo de um membro.',
-      options: [MEMBRO],
-      run: async ({ membro }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ModerateMembers);
+      name: 'voz-mover',
+      description: 'Move um membro para outro canal de voz.',
+      options: [MEMBRO, opt.canal('destino', 'Canal de voz de destino', true), MOTIVO],
+      run: async ({ membro, destino, motivo }, interaction) => {
+        exigir(interaction, PermissionFlagsBits.MoveMembers);
+        if (![ChannelType.GuildVoice, ChannelType.GuildStageVoice].includes(destino.type)) {
+          throw aviso('Escolha um canal de voz ou um palco.');
+        }
         const alvo = await interaction.guild.members.fetch(membro.id);
-        if (!alvo.isCommunicationDisabled()) throw aviso(`${alvo} não está silenciado.`);
-        await alvo.timeout(null, `por ${interaction.user.tag}`);
-        return `🔊 ${alvo} pode falar de novo.`;
+        alvoValido(interaction, alvo);
+        if (!alvo.voice.channel) throw aviso(`${alvo} não está em um canal de voz.`);
+        await alvo.voice.setChannel(destino, motivo ?? `por ${interaction.user.tag}`);
+        return `🔊 ${alvo} foi movido para ${destino}.${motivo ? `\nMotivo: ${motivo}` : ''}`;
       },
     },
     {
@@ -371,7 +401,7 @@ export default familia({
       },
     },
     {
-      name: 'quem-e',
+      name: 'ficha-membro',
       description: 'Ficha rápida de um membro para moderação.',
       options: [MEMBRO],
       run: async ({ membro }, interaction) => {
@@ -457,7 +487,7 @@ export default familia({
         const todos = await interaction.guild.members.fetch();
         const filtrados = [...todos.filter((m) => !cargo || m.roles.cache.has(cargo.id)).values()];
         const linhas = filtrados.slice(0, 120).map((m) => `${m.user.tag}\t${m.id}`);
-        return `**${filtrados.length}** membro(s)${cargo ? ` com ${cargo}` : ''}${filtrados.length > 120 ? ' (mostrando os 120 primeiros)' : ''}\n${bloco(linhas.join('\n'))}`;
+        return `**${qtd(filtrados.length, 'membro')}**${cargo ? ` com ${cargo}` : ''}${filtrados.length > 120 ? ' (mostrando os 120 primeiros)' : ''}\n${bloco(linhas.join('\n'))}`;
       },
     },
   ],

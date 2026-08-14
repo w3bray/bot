@@ -12,6 +12,7 @@ import { db } from '../../lib/db.js';
 import { embed, replyError, truncate } from '../../lib/embeds.js';
 import { logger } from '../../lib/logger.js';
 import { ownerIds } from '../../lib/owner.js';
+import { quantidade } from '../../lib/portugues.js';
 import { shardLabel, totalGuilds, totalMembers } from '../../lib/shard.js';
 import { corpoDosComandos, limparEscopoDeServidor } from '../../services/autodeploy.js';
 import { addBalance, formatMoney } from '../../services/economy.js';
@@ -50,8 +51,8 @@ export default {
     )
     .addSubcommand((sub) =>
       sub
-        .setName('deploy')
-        .setDescription('Registra os comandos de barra novamente.')
+        .setName('registrar')
+        .setDescription('Atualiza os comandos de barra no Discord.')
         .addStringOption((option) =>
           option
             .setName('escopo')
@@ -97,18 +98,20 @@ export default {
     .addSubcommand((sub) =>
       sub.setName('convite').setDescription('Gera o link para adicionar o bot em qualquer servidor.'),
     )
-    .addSubcommand((sub) => sub.setName('stats').setDescription('Números do bot em todos os shards.')),
+    .addSubcommand((sub) =>
+      sub.setName('estatisticas').setDescription('Mostra os números do bot em todos os processos.'),
+    ),
 
   async execute(interaction, client) {
     const sub = interaction.options.getSubcommand();
 
     if (sub === 'servidores') return listGuilds(interaction, client);
     if (sub === 'sair') return leaveGuild(interaction, client);
-    if (sub === 'deploy') return deploy(interaction, client);
+    if (sub === 'registrar') return deploy(interaction, client);
     if (sub === 'moedas') return giveCoins(interaction);
     if (sub === 'nivel') return setLevel(interaction);
     if (sub === 'convite') return invite(interaction, client);
-    if (sub === 'stats') return stats(interaction, client);
+    if (sub === 'estatisticas') return stats(interaction, client);
   },
 };
 
@@ -220,8 +223,8 @@ async function deploy(interaction, client) {
       embeds: [
         embed.success(
           [
-            `Varri **${resumo.verificados}** servidor(es).`,
-            `Limpei **${resumo.limpos}** que tinham comandos no escopo de servidor.`,
+            `Verifiquei **${quantidade(resumo.verificados, 'servidor')}**.`,
+            `Removi comandos locais de **${quantidade(resumo.limpos, 'servidor')}**.`,
             resumo.falhas > 0 ? `**${resumo.falhas}** falharam — veja os logs.` : null,
             '',
             'Feche e reabra o Discord: ele guarda a lista de comandos em cache.',
@@ -288,7 +291,7 @@ async function diagnostico(interaction, client, rest) {
             ...linhas,
             '',
             duplicando > 0
-              ? `**${duplicando} servidor(es) duplicando.** Rode \`/dono deploy escopo:Limpar duplicatas\`.`
+              ? `Há comandos duplicados em **${quantidade(duplicando, 'servidor')}**. Rode \`/dono registrar escopo:Limpar duplicatas\`.`
               : 'Nenhuma duplicata. Se a lista ainda repete no seu Discord, é cache — feche e reabra o app.',
           ].join('\n'),
         ),
@@ -329,7 +332,7 @@ async function setLevel(interaction) {
 
   const user = interaction.options.getUser('usuario');
   const level = interaction.options.getInteger('nivel');
-  // Guardamos o XP exato do início do nível para o /rank continuar coerente.
+  // Guardamos o XP exato do início do nível para o /nivel continuar coerente.
   const xp = xpForLevel(level);
 
   upsertLevel.run({ guild_id: interaction.guildId, user_id: user.id, xp, level: levelFromXp(xp) });
@@ -388,7 +391,7 @@ async function invite(interaction, client) {
             'Só o que os comandos usam. Prefira este em servidor dos outros.',
             '',
             'Os dois valem para **quantos servidores você quiser** — não precisa cadastrar ID nenhum.',
-            'Para os comandos aparecerem em todos, rode `/dono deploy escopo:Global` uma vez.',
+            'Para os comandos aparecerem em todos, rode `/dono registrar escopo:Global` uma vez.',
           ].join('\n'),
         ),
     ],
@@ -411,7 +414,7 @@ async function stats(interaction, client) {
         .addFields(
           {
             name: 'Alcance',
-            value: `**${guilds.total}** servidores · **${members.total.toLocaleString('pt-BR')}** membros${guilds.partial ? '\n_(parcial: nem todo shard respondeu)_' : ''}`,
+            value: `**${guilds.total}** servidores · **${members.total.toLocaleString('pt-BR')}** membros${guilds.partial ? '\n_(parcial: nem todo processo respondeu)_' : ''}`,
           },
           { name: 'Processo', value: `${shardLabel(client)} · ${memory} MB · ping ${client.ws.ping}ms` },
           { name: 'No ar desde', value: `<t:${uptime}:R>` },

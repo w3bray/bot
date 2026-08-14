@@ -4,6 +4,7 @@ import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { formatMoney, getAccount } from '../../services/economy.js';
 import { ITEMS, buyItem, getInventory } from '../../services/shop.js';
+import { quantidade } from '../../lib/portugues.js';
 
 export default {
   cooldown: 3,
@@ -130,7 +131,7 @@ async function showInventory(interaction) {
           items.map((row) => `${row.item.emoji} **${row.item.name}**`).join('\n'),
         )
         .setFooter({
-          text: `${items.length} item(ns) · investido: ${formatMoney(total, settings.currency_name)}`,
+          text: `${quantidade(items.length, 'item', 'itens')} · investido: ${formatMoney(total, settings.currency_name)}`,
         }),
     ],
   });

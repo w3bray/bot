@@ -17,13 +17,38 @@ const LOREM = [
   'magna', 'aliqua', 'enim', 'ad', 'minim', 'veniam', 'quis', 'nostrud',
 ];
 
-const SILABAS = ['ka', 'ro', 'mi', 'ta', 'zen', 'lu', 'vor', 'nix', 'ara', 'del', 'sha', 'kor', 'ny', 'tha'];
+const NOMES_TESTE = ['Ana Lima', 'Bruno Rocha', 'Carla Nunes', 'Diego Alves', 'Elisa Martins'];
+const STATUS_TESTE = ['ativo', 'pendente', 'inativo'];
+
+function slug(texto) {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function citarShell(texto) {
+  return `'${String(texto).replaceAll("'", `'\"'\"'`)}'`;
+}
+
+function registroTeste(indice) {
+  const nome = NOMES_TESTE[indice % NOMES_TESTE.length];
+  return {
+    id: indice + 1,
+    nome,
+    email: `${slug(nome).replaceAll('-', '.')}+${indice + 1}@example.com`,
+    status: STATUS_TESTE[indice % STATUS_TESTE.length],
+  };
+}
 
 export default familia({
   name: 'gerar',
   // Promovidos a comando de topo: saem da família e viram /nome direto.
   atalhos: ['senha', 'uuid'],
-  description: 'Gera senhas, identificadores, cores, textos e nomes.',
+  description: 'Gera senhas, identificadores e arquivos auxiliares para projetos.',
   cooldown: 3,
   subs: [
     {
@@ -154,113 +179,176 @@ export default familia({
       },
     },
     {
-      name: 'nome-fantasia',
-      description: 'Inventa um nome de personagem.',
-      options: [opt.inteiro('quantidade', 'Quantos nomes', false, { min: 1, max: 15 })],
-      run: ({ quantidade }) =>
-        Array.from({ length: quantidade ?? 5 }, () => {
-          const tamanho = 2 + sortear(2);
-          const nome = Array.from({ length: tamanho }, () => escolher(SILABAS)).join('');
-          return `• **${nome[0].toUpperCase()}${nome.slice(1)}**`;
-        }).join('\n'),
-    },
-    {
-      name: 'nick',
-      description: 'Inventa um apelido para jogo.',
-      options: [opt.inteiro('quantidade', 'Quantos apelidos', false, { min: 1, max: 15 })],
-      run: ({ quantidade }) => {
-        const adjetivos = ['Dark', 'Neo', 'Cyber', 'Ghost', 'Toxic', 'Silent', 'Rapid', 'Zero', 'Mad', 'Iron'];
-        const nomes = ['Wolf', 'Raven', 'Blade', 'Storm', 'Byte', 'Fox', 'Reaper', 'Nova', 'Viper', 'Shark'];
-        return Array.from({ length: quantidade ?? 5 }, () =>
-          `• \`${escolher(adjetivos)}${escolher(nomes)}${sortear(100)}\``,
-        ).join('\n');
+      name: 'nome-branch',
+      description: 'Gera um nome padronizado para uma branch do Git.',
+      options: [
+        { kind: 'string', name: 'tipo', description: 'Tipo da mudança', required: true,
+          choices: [
+            { name: 'Funcionalidade', value: 'feat' },
+            { name: 'Correção', value: 'fix' },
+            { name: 'Documentação', value: 'docs' },
+            { name: 'Refatoração', value: 'refactor' },
+            { name: 'Manutenção', value: 'chore' },
+          ] },
+        opt.texto('descricao', 'Resumo curto da mudança', true, { max: 200 }),
+      ],
+      run: ({ tipo, descricao }) => {
+        const nome = slug(descricao);
+        if (!nome) throw aviso('A descrição precisa ter letras ou números.');
+        return bloco(`${tipo}/${nome}`);
       },
     },
     {
-      name: 'pergunta',
-      description: 'Uma pergunta para puxar assunto no servidor.',
-      run: () =>
-        `💬 **${escolher([
-          'Qual foi a melhor coisa que te aconteceu esse mês?',
-          'Se você pudesse morar em qualquer lugar, onde seria?',
-          'Qual filme você já assistiu mais vezes?',
-          'Qual comida você comeria todo dia sem enjoar?',
-          'Que habilidade você queria ter aprendido mais cedo?',
-          'Qual foi o melhor jogo que você já jogou?',
-          'Você é mais de acordar cedo ou virar a noite?',
-          'Qual música não sai da sua cabeça ultimamente?',
-          'Se te dessem um ano sabático, o que você faria?',
-          'Qual foi a compra mais inútil que você já fez?',
-          'Que lugar do Brasil você quer conhecer?',
-          'Qual foi o conselho mais útil que você já recebeu?',
-        ])}**`,
+      name: 'nome-arquivo',
+      description: 'Limpa um nome de arquivo e acrescenta extensão e data opcionais.',
+      options: [
+        opt.texto('nome', 'Nome que será normalizado', true, { max: 200 }),
+        opt.texto('extensao', 'Extensão sem ponto, ex.: pdf', false, { max: 15 }),
+        opt.sim('data', 'Acrescentar a data atual no início'),
+      ],
+      run: ({ nome, extensao, data }) => {
+        const base = slug(nome);
+        if (!base) throw aviso('O nome precisa ter letras ou números.');
+        const prefixo = data ? `${new Date().toISOString().slice(0, 10)}-` : '';
+        const ext = extensao?.replace(/[^a-z0-9]/gi, '').toLowerCase();
+        return bloco(`${prefixo}${base}${ext ? `.${ext}` : ''}`);
+      },
     },
     {
-      name: 'desafio',
-      description: 'Um desafio bobo para o servidor.',
-      run: () =>
-        `🎯 **${escolher([
-          'Mande a última foto da sua galeria (se puder).',
-          'Conte uma história sua em exatamente 10 palavras.',
-          'Escreva sem usar a letra A por 3 mensagens.',
-          'Recomende algo que ninguém aqui conhece.',
-          'Mande um print da sua tela inicial.',
-          'Diga uma opinião impopular que você defende.',
-          'Conte a coisa mais estranha que você já comeu.',
-          'Explique seu trabalho ou estúdio como se fosse para uma criança.',
-        ])}**`,
+      name: 'commit',
+      description: 'Monta uma mensagem no padrão Conventional Commits.',
+      options: [
+        { kind: 'string', name: 'tipo', description: 'Tipo da mudança', required: true,
+          choices: [
+            { name: 'feat — funcionalidade', value: 'feat' },
+            { name: 'fix — correção', value: 'fix' },
+            { name: 'docs — documentação', value: 'docs' },
+            { name: 'refactor — refatoração', value: 'refactor' },
+            { name: 'test — testes', value: 'test' },
+            { name: 'chore — manutenção', value: 'chore' },
+          ] },
+        opt.texto('mensagem', 'Descrição curta no imperativo', true, { max: 200 }),
+        opt.texto('escopo', 'Área afetada, ex.: pagamentos', false, { max: 50 }),
+        opt.sim('quebra', 'Marcar como mudança incompatível'),
+      ],
+      run: ({ tipo, mensagem, escopo, quebra }) => {
+        const cabecalho = `${tipo}${escopo ? `(${slug(escopo)})` : ''}${quebra ? '!' : ''}: ${mensagem.trim()}`;
+        return bloco(cabecalho);
+      },
     },
     {
-      name: 'verdade',
-      description: 'Uma pergunta de verdade ou desafio.',
-      run: () =>
-        `🫣 **${escolher([
-          'Qual foi a maior mentira que você já contou?',
-          'Qual foi o momento mais vergonhoso da sua vida?',
-          'Qual talento secreto você tem?',
-          'Você já fingiu gostar de um presente?',
-          'Qual é o seu maior medo?',
-          'Qual foi a última vez que você chorou de rir?',
-        ])}**`,
+      name: 'changelog',
+      description: 'Gera uma entrada de changelog em Markdown.',
+      options: [
+        opt.texto('versao', 'Versão ou rótulo da entrega', true, { max: 50 }),
+        opt.texto('itens', 'Mudanças separadas por ponto e vírgula', true, { max: 1800 }),
+        opt.texto('data', 'Data exibida; o padrão é hoje', false, { max: 30 }),
+      ],
+      run: ({ versao, itens, data }) => {
+        const linhas = itens.split(/[;\n]+/).map((item) => item.trim()).filter(Boolean);
+        if (linhas.length === 0) throw aviso('Informe pelo menos uma mudança.');
+        const hoje = data || new Date().toLocaleDateString('pt-BR');
+        return bloco(`## ${versao} — ${hoje}\n\n${linhas.map((item) => `- ${item}`).join('\n')}`, 'md');
+      },
     },
     {
-      name: 'conselho',
-      description: 'Um conselho aleatório.',
-      run: () =>
-        `🧠 **${escolher([
-          'Se leva menos de dois minutos, faça agora.',
-          'Durma antes de responder aquela mensagem irritada.',
-          'Guarde o backup antes de precisar dele.',
-          'Perguntar cedo custa menos que consertar tarde.',
-          'O melhor momento para começar foi ontem. O segundo melhor é hoje.',
-          'Escreva o que você aprendeu; você vai esquecer.',
-          'Se está caro demais para testar, quebre em pedaços menores.',
-        ])}**`,
+      name: 'readme',
+      description: 'Gera a estrutura inicial de um README em Markdown.',
+      options: [
+        opt.texto('projeto', 'Nome do projeto', true, { max: 100 }),
+        opt.texto('resumo', 'Descrição curta do projeto', true, { max: 700 }),
+        opt.texto('instalacao', 'Comando ou instrução de instalação', false, { max: 700 }),
+        opt.texto('uso', 'Exemplo ou instrução de uso', false, { max: 700 }),
+      ],
+      run: ({ projeto, resumo, instalacao, uso }) => bloco([
+        `# ${projeto}`,
+        '',
+        resumo,
+        '',
+        '## Instalação',
+        '',
+        instalacao || 'Descreva aqui os requisitos e as etapas de instalação.',
+        '',
+        '## Uso',
+        '',
+        uso || 'Inclua aqui um exemplo de uso.',
+        '',
+        '## Licença',
+        '',
+        'Informe a licença adotada pelo projeto.',
+      ].join('\n'), 'md'),
     },
     {
-      name: 'ideia',
-      description: 'Uma ideia de projeto para tirar do papel.',
-      run: () =>
-        `💡 **${escolher([
-          'Um bot que lembra o servidor de beber água.',
-          'Um site que mostra quanto tempo falta para o fim do ano.',
-          'Um script que renomeia suas fotos pela data.',
-          'Um painel com as estatísticas do seu servidor.',
-          'Um jogo de adivinhação com as músicas que você ouve.',
-          'Um resumo automático do que você fez na semana.',
-        ])}**`,
+      name: 'gitignore',
+      description: 'Gera um arquivo .gitignore básico para a tecnologia escolhida.',
+      options: [
+        { kind: 'string', name: 'tecnologia', description: 'Tecnologia principal', required: true,
+          choices: [
+            { name: 'Node.js', value: 'node' },
+            { name: 'Python', value: 'python' },
+            { name: 'Java', value: 'java' },
+            { name: 'Go', value: 'go' },
+            { name: 'Docker', value: 'docker' },
+          ] },
+      ],
+      run: ({ tecnologia }) => {
+        const modelos = {
+          node: ['node_modules/', 'dist/', 'coverage/', '.env', '*.log'],
+          python: ['__pycache__/', '*.py[cod]', '.venv/', 'dist/', '.env', '.pytest_cache/'],
+          java: ['target/', '*.class', '*.jar', '.gradle/', '.idea/', '*.iml'],
+          go: ['bin/', 'vendor/', '*.test', '*.out', '.env'],
+          docker: ['.env', '*.log', 'tmp/', '.git/', '.DS_Store'],
+        };
+        return bloco(modelos[tecnologia].join('\n'));
+      },
     },
     {
-      name: 'numero-sorte',
-      description: 'Seu número da sorte de hoje.',
-      run: (_, interaction) => {
-        // Determinístico por pessoa e por dia: dá para conferir com um amigo.
-        const dia = Math.floor(Date.now() / 86_400_000);
-        const semente = crypto
-          .createHash('sha256')
-          .update(`${interaction.user.id}:${dia}`)
-          .digest();
-        return `🍀 O seu número da sorte de hoje é **${(semente.readUInt32BE(0) % 100) + 1}**`;
+      name: 'curl',
+      description: 'Monta um comando curl com método, cabeçalhos e corpo opcionais.',
+      options: [
+        opt.texto('url', 'URL completa da requisição', true, { max: 1000 }),
+        { kind: 'string', name: 'metodo', description: 'Método HTTP', required: true,
+          choices: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((metodo) => ({ name: metodo, value: metodo })) },
+        opt.texto('cabecalhos', 'Um cabeçalho por linha, no formato Nome: valor', false, { max: 1200 }),
+        opt.texto('corpo', 'Corpo JSON ou texto', false, { max: 1500 }),
+      ],
+      run: ({ url, metodo, cabecalhos, corpo }) => {
+        if (!/^https?:\/\//i.test(url)) throw aviso('A URL precisa começar com http:// ou https://.');
+        const partes = ['curl', '-X', metodo, citarShell(url)];
+        for (const cabecalho of cabecalhos?.split('\n').map((item) => item.trim()).filter(Boolean) ?? []) {
+          partes.push('-H', citarShell(cabecalho));
+        }
+        if (corpo) partes.push('--data-raw', citarShell(corpo));
+        return bloco(partes.join(' \\\n  '), 'bash');
+      },
+    },
+    {
+      name: 'csv-teste',
+      description: 'Gera registros fictícios em CSV para testes.',
+      options: [
+        opt.inteiro('linhas', 'Quantidade de registros', true, { min: 1, max: 100 }),
+        { kind: 'string', name: 'separador', description: 'Separador de colunas', required: false,
+          choices: [{ name: 'Ponto e vírgula', value: ';' }, { name: 'Vírgula', value: ',' }] },
+      ],
+      run: ({ linhas, separador }) => {
+        const sep = separador ?? ';';
+        const registros = Array.from({ length: linhas }, (_, indice) => registroTeste(indice));
+        return bloco([
+          ['id', 'nome', 'email', 'status'].join(sep),
+          ...registros.map((item) => [item.id, item.nome, item.email, item.status].join(sep)),
+        ].join('\n'), 'csv');
+      },
+    },
+    {
+      name: 'json-teste',
+      description: 'Gera registros fictícios em JSON para testes.',
+      options: [
+        opt.inteiro('registros', 'Quantidade de registros', true, { min: 1, max: 50 }),
+        opt.sim('compacto', 'Retornar JSON sem indentação'),
+      ],
+      run: ({ registros, compacto }) => {
+        const dados = Array.from({ length: registros }, (_, indice) => registroTeste(indice));
+        return bloco(JSON.stringify(dados, null, compacto ? 0 : 2), 'json');
       },
     },
     {
@@ -291,21 +379,6 @@ export default familia({
         const pct = Math.min(100, (atual / total) * 100);
         const cheios = Math.round(pct / 5);
         return `\`${'█'.repeat(cheios)}${'░'.repeat(20 - cheios)}\` **${pct.toFixed(1)}%**\n${atual.toLocaleString('pt-BR')} de ${total.toLocaleString('pt-BR')}`;
-      },
-    },
-    {
-      name: 'ascii',
-      description: 'Escreve um texto curto em letras grandes.',
-      options: [opt.texto('texto', 'Até 10 caracteres', true, { max: 10 })],
-      run: ({ texto }) => {
-        const mapa = {
-          a: ' ▄▀█ ', b: '█▄▄▀ ', c: '█▀▀▄ ', d: '█▄▄▀ ', e: '█▀▀ ', f: '█▀▀ ',
-          g: '█▀▀ ', h: '█▄▄█', i: ' █ ', j: ' ▄█', k: '█▄▀', l: '█▄▄', m: '█▄▄█',
-          n: '█▄█', o: '█▀█', p: '█▀▄', q: '█▀█', r: '█▀▄', s: '▄▀▀', t: '▀█▀',
-          u: '█▄█', v: '█▄█', w: '█▄█', x: '▀▄▀', y: '▀▄▀', z: '▀▀▄', ' ': '   ',
-        };
-        const letras = [...texto.toLowerCase()].map((c) => mapa[c] ?? c);
-        return bloco(letras.join(' '));
       },
     },
   ],

@@ -7,13 +7,14 @@ import {
 import { getAutomod, readJson, setAutomod } from '../../lib/db.js';
 import { colors } from '../../config.js';
 import { embed, replyError, truncate } from '../../lib/embeds.js';
+import { quantidade } from '../../lib/portugues.js';
 
 const MAX_WORDS = 100;
 
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('automod')
+    .setName('auto-moderacao')
     .setDescription('Configura a moderação automática.')
     .addSubcommand((sub) => sub.setName('ver').setDescription('Mostra as regras ativas.'))
     .addSubcommand((sub) =>
@@ -27,10 +28,10 @@ export default {
           option.setName('links').setDescription('Bloquear qualquer link'),
         )
         .addBooleanOption((option) =>
-          option.setName('spam').setDescription('Bloquear flood de mensagens'),
+          option.setName('excesso-mensagens').setDescription('Bloquear muitas mensagens seguidas'),
         )
         .addBooleanOption((option) =>
-          option.setName('caps').setDescription('Bloquear excesso de letras maiúsculas'),
+          option.setName('maiusculas').setDescription('Bloquear excesso de letras maiúsculas'),
         ),
     )
     .addSubcommand((sub) =>
@@ -39,22 +40,22 @@ export default {
         .setDescription('Ajusta os limites numéricos dos filtros.')
         .addIntegerOption((option) =>
           option
-            .setName('mensagens_spam')
+            .setName('mensagens-spam')
             .setDescription('Máximo de mensagens na janela de tempo (padrão: 5)')
             .setMinValue(2)
             .setMaxValue(20),
         )
         .addIntegerOption((option) =>
           option
-            .setName('janela_segundos')
-            .setDescription('Janela do antispam em segundos (padrão: 5)')
+            .setName('janela-segundos')
+            .setDescription('Intervalo usado para contar mensagens seguidas (padrão: 5 s)')
             .setMinValue(1)
             .setMaxValue(60),
         )
         .addIntegerOption((option) =>
           option
-            .setName('percentual_caps')
-            .setDescription('A partir de quantos % de maiúsculas bloquear (padrão: 70)')
+            .setName('percentual-maiusculas')
+            .setDescription('Porcentagem de letras maiúsculas que aciona o filtro (padrão: 70%)')
             .setMinValue(30)
             .setMaxValue(100),
         )
@@ -168,7 +169,7 @@ async function show(interaction) {
     embeds: [
       embed
         .base(colors.primary)
-        .setTitle('🤖 AutoMod')
+        .setTitle('🤖 Moderação automática')
         .addFields(
           {
             name: 'Filtros',
@@ -178,7 +179,7 @@ async function show(interaction) {
               `Spam: ${state(settings.anti_spam)}`,
               `Maiúsculas: ${state(settings.anti_caps)}`,
               `Menções: ${settings.mention_limit > 0 ? `🟢 máximo de ${settings.mention_limit}` : '⚪ desligado'}`,
-              `Palavras proibidas: ${words.length > 0 ? `🟢 ${words.length} palavra(s)` : '⚪ nenhuma'}`,
+              `Palavras proibidas: ${words.length > 0 ? `🟢 ${quantidade(words.length, 'palavra')}` : '⚪ nenhuma'}`,
             ].join('\n'),
           },
           {
@@ -212,8 +213,8 @@ async function setFilters(interaction) {
   const mapping = {
     convites: 'anti_invite',
     links: 'anti_link',
-    spam: 'anti_spam',
-    caps: 'anti_caps',
+    'excesso-mensagens': 'anti_spam',
+    maiusculas: 'anti_caps',
   };
 
   const patch = {};
@@ -229,16 +230,16 @@ async function setFilters(interaction) {
   setAutomod(interaction.guildId, patch);
 
   await interaction.reply({
-    embeds: [embed.success('Filtros atualizados. Use `/automod ver` para conferir.')],
+    embeds: [embed.success('Filtros atualizados. Use `/auto-moderacao ver` para conferir.')],
     flags: MessageFlags.Ephemeral,
   });
 }
 
 async function setLimits(interaction) {
   const patch = {};
-  const spamMessages = interaction.options.getInteger('mensagens_spam');
-  const window = interaction.options.getInteger('janela_segundos');
-  const caps = interaction.options.getInteger('percentual_caps');
+  const spamMessages = interaction.options.getInteger('mensagens-spam');
+  const window = interaction.options.getInteger('janela-segundos');
+  const caps = interaction.options.getInteger('percentual-maiusculas');
   const mentions = interaction.options.getInteger('mencoes');
 
   if (spamMessages !== null) patch.spam_messages = spamMessages;
@@ -253,7 +254,7 @@ async function setLimits(interaction) {
   setAutomod(interaction.guildId, patch);
 
   await interaction.reply({
-    embeds: [embed.success('Limites atualizados. Use `/automod ver` para conferir.')],
+    embeds: [embed.success('Limites atualizados. Use `/auto-moderacao ver` para conferir.')],
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -270,7 +271,7 @@ async function setPunishment(interaction) {
   await interaction.reply({
     embeds: [
       embed.success(
-        `Punição do automod definida como **${PUNISHMENT_LABELS[action]}**${action === 'timeout' ? ` por ${minutes ?? getAutomod(interaction.guildId).timeout_minutes} minuto(s)` : ''}.`,
+        `A punição agora é **${PUNISHMENT_LABELS[action]}**${action === 'timeout' ? ` por ${quantidade(minutes ?? getAutomod(interaction.guildId).timeout_minutes, 'minuto')}` : ''}.`,
       ),
     ],
     flags: MessageFlags.Ephemeral,
@@ -291,7 +292,7 @@ async function manageWords(interaction) {
               .base(colors.primary)
               .setTitle('🚫 Palavras proibidas')
               .setDescription(truncate(current.map((word) => `\`${word}\``).join(', '), 4000))
-              .setFooter({ text: `${current.length} palavra(s)` })
+              .setFooter({ text: quantidade(current.length, 'palavra') })
           : embed.info('Nenhuma palavra proibida configurada.'),
       ],
       flags: MessageFlags.Ephemeral,
@@ -330,8 +331,8 @@ async function manageWords(interaction) {
     embeds: [
       embed.success(
         action === 'add'
-          ? `${words.length} palavra(s) adicionada(s). Total: **${updated.length}**.`
-          : `Lista atualizada. Total: **${updated.length}** palavra(s).`,
+          ? `Adicionei ${quantidade(words.length, 'palavra')}. A lista agora tem **${quantidade(updated.length, 'palavra')}**.`
+          : `Lista atualizada. Agora ela tem **${quantidade(updated.length, 'palavra')}**.`,
       ),
     ],
     flags: MessageFlags.Ephemeral,

@@ -23,8 +23,8 @@ export default {
 
     if (settings.autorole && member.guild.roles.cache.has(settings.autorole)) {
       await member.roles
-        .add(settings.autorole, 'Autorole de entrada')
-        .catch((error) => logger.debug('Falha no autorole:', error.message));
+        .add(settings.autorole, 'Cargo automático de entrada')
+        .catch((error) => logger.debug('Falha ao entregar o cargo automático:', error.message));
     }
 
     if (settings.welcome_channel) {

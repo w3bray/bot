@@ -6,7 +6,7 @@ import { createCase, notifyUser } from '../../services/modcase.js';
 export default {
   cooldown: 3,
   data: new SlashCommandBuilder()
-    .setName('ban')
+    .setName('banir')
     .setDescription('Bane um membro do servidor.')
     .addUserOption((option) =>
       option.setName('usuario').setDescription('Quem será banido').setRequired(true),
@@ -16,7 +16,7 @@ export default {
     )
     .addIntegerOption((option) =>
       option
-        .setName('apagar_dias')
+        .setName('apagar-dias')
         .setDescription('Apagar mensagens recentes desse usuário (0 a 7 dias)')
         .setMinValue(0)
         .setMaxValue(7),
@@ -27,7 +27,7 @@ export default {
   async execute(interaction) {
     const target = interaction.options.getUser('usuario');
     const reason = interaction.options.getString('motivo') ?? 'Sem motivo informado.';
-    const deleteDays = interaction.options.getInteger('apagar_dias') ?? 0;
+    const deleteDays = interaction.options.getInteger('apagar-dias') ?? 0;
 
     const existingBan = await interaction.guild.bans.fetch(target.id).catch(() => null);
     if (existingBan) return replyError(interaction, 'Esse usuário já está banido.');
@@ -72,8 +72,10 @@ export default {
           .addFields(
             { name: 'Motivo', value: reason },
             {
-              name: 'Aviso por DM',
-              value: notified ? 'entregue' : 'não entregue (DM fechada ou usuário fora do servidor)',
+              name: 'Mensagem direta',
+              value: notified
+                ? 'Entregue.'
+                : 'Não entregue (mensagens diretas fechadas ou usuário fora do servidor).',
               inline: true,
             },
           ),
