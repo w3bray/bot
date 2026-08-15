@@ -178,7 +178,7 @@ export default {
     .addSubcommand((sub) =>
       sub
         .setName('sugestoes')
-        .setDescription('Canal que recebe as sugestões enviadas com /sugestao.')
+        .setDescription('Canal que recebe as sugestões enviadas com /sugestão.')
         .addChannelOption((option) =>
           option
             .setName('canal')
@@ -290,7 +290,7 @@ async function showConfig(interaction) {
             ].join('\n'),
           },
         )
-        .setFooter({ text: 'Use /auto-moderacao ver para conferir as regras automáticas.' }),
+        .setFooter({ text: 'Use /auto-moderação ver para conferir as regras automáticas.' }),
     ],
     flags: MessageFlags.Ephemeral,
   });
@@ -509,7 +509,7 @@ async function setSuggestions(interaction) {
     embeds: [
       embed.success(
         channel
-          ? `As sugestões enviadas com \`/sugestao enviar\` irão para ${channel}.`
+          ? `As sugestões enviadas com \`/sugestão enviar\` irão para ${channel}.`
           : 'Canal de sugestões desativado.',
       ),
     ],

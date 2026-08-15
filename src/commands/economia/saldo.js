@@ -45,7 +45,7 @@ export default {
               inline: true,
             },
           )
-          .setFooter({ text: 'Use /diario todos os dias para aumentar sua sequência.' }),
+          .setFooter({ text: 'Use /diário todos os dias para aumentar sua sequência.' }),
       ],
     });
   },

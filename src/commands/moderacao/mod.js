@@ -1,4 +1,4 @@
-import { ChannelType, PermissionFlagsBits } from 'discord.js';
+import { ChannelType, PermissionFlagsBits, SnowflakeUtil } from 'discord.js';
 import { colors } from '../../config.js';
 import { embed, truncate } from '../../lib/embeds.js';
 import { aviso, bloco, familia, opt } from '../../lib/familia.js';
@@ -13,7 +13,19 @@ const NOMES = {
   [PermissionFlagsBits.KickMembers]: 'Expulsar Membros',
   [PermissionFlagsBits.BanMembers]: 'Banir Membros',
   [PermissionFlagsBits.ManageGuild]: 'Gerenciar Servidor',
+  [PermissionFlagsBits.ManageWebhooks]: 'Gerenciar Webhooks',
 };
+
+const PERMISSOES_CRITICAS = [
+  [PermissionFlagsBits.Administrator, 'Administrador'],
+  [PermissionFlagsBits.ManageGuild, 'Gerenciar servidor'],
+  [PermissionFlagsBits.ManageRoles, 'Gerenciar cargos'],
+  [PermissionFlagsBits.ManageChannels, 'Gerenciar canais'],
+  [PermissionFlagsBits.BanMembers, 'Banir membros'],
+  [PermissionFlagsBits.KickMembers, 'Expulsar membros'],
+  [PermissionFlagsBits.ManageWebhooks, 'Gerenciar webhooks'],
+  [PermissionFlagsBits.MentionEveryone, 'Mencionar everyone'],
+];
 
 /** Exige a permissão de quem chamou E do bot: faltando qualquer uma, para aqui. */
 function exigir(interaction, flag) {
@@ -167,51 +179,94 @@ export default familia({
       },
     },
     {
-      name: 'limpar-bots',
-      description: 'Apaga as mensagens de bots no canal.',
-      options: [opt.inteiro('quantidade', 'Quantas procurar (até 100)', true, { min: 1, max: 100 })],
-      run: async ({ quantidade }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageMessages);
-        await interaction.deferReply({ flags: 64 });
-        const mensagens = await interaction.channel.messages.fetch({ limit: quantidade });
-        const deBots = [...mensagens.filter((m) => m.author.bot).values()];
-        const apagadas = await interaction.channel.bulkDelete(deBots, true).catch(() => null);
-        await interaction.editReply({
-          embeds: [embed.success(`🤖 Apaguei **${apagadas?.size ?? 0}** mensagens de bots.`)],
-        });
-        return null;
+      name: 'auditar-permissoes',
+      description: 'Mostra cargos com permissões administrativas ou de alto risco.',
+      run: (_, interaction) => {
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+          throw aviso('Você precisa da permissão **Gerenciar Servidor** para fazer essa auditoria.');
+        }
+        const linhas = interaction.guild.roles.cache
+          .filter((cargo) => cargo.id !== interaction.guild.id && !cargo.managed)
+          .sort((a, b) => b.position - a.position)
+          .map((cargo) => {
+            const encontradas = PERMISSOES_CRITICAS
+              .filter(([permissao]) => cargo.permissions.has(permissao))
+              .map(([, nome]) => nome);
+            return encontradas.length > 0 ? `${cargo} — ${encontradas.join(', ')}` : null;
+          })
+          .filter(Boolean);
+
+        return {
+          embeds: [
+            embed.base(linhas.length > 0 ? colors.warning : colors.success)
+              .setTitle(`Cargos com permissões críticas (${linhas.length})`)
+              .setDescription(truncate(linhas.join('\n') || '_Nenhum cargo próprio tem permissão crítica._', 4000)),
+          ],
+        };
       },
     },
     {
-      name: 'limpar-links',
-      description: 'Apaga as mensagens que contêm links.',
-      options: [opt.inteiro('quantidade', 'Quantas procurar (até 100)', true, { min: 1, max: 100 })],
-      run: async ({ quantidade }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageMessages);
-        await interaction.deferReply({ flags: 64 });
-        const mensagens = await interaction.channel.messages.fetch({ limit: quantidade });
-        const comLink = [...mensagens.filter((m) => /https?:\/\//i.test(m.content)).values()];
-        const apagadas = await interaction.channel.bulkDelete(comLink, true).catch(() => null);
-        await interaction.editReply({
-          embeds: [embed.success(`🔗 Apaguei **${apagadas?.size ?? 0}** mensagens com link.`)],
-        });
-        return null;
+      name: 'cargos-vazios',
+      description: 'Lista cargos próprios que não estão atribuídos a nenhum membro.',
+      run: async (_, interaction) => {
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
+          throw aviso('Você precisa da permissão **Gerenciar Cargos** para ver essa lista.');
+        }
+        await interaction.guild.members.fetch().catch(() => null);
+        const vazios = interaction.guild.roles.cache
+          .filter(
+            (cargo) =>
+              cargo.id !== interaction.guild.id &&
+              !cargo.managed &&
+              cargo.members.size === 0,
+          )
+          .sort((a, b) => b.position - a.position);
+        return {
+          embeds: [
+            embed.base(colors.neutral)
+              .setTitle(`Cargos vazios (${vazios.size})`)
+              .setDescription(
+                truncate(vazios.map((cargo) => `${cargo} · posição ${cargo.position}`).join('\n') || '_Nenhum._', 4000),
+              ),
+          ],
+        };
       },
     },
     {
-      name: 'limpar-anexos',
-      description: 'Apaga as mensagens com imagens ou arquivos.',
-      options: [opt.inteiro('quantidade', 'Quantas procurar (até 100)', true, { min: 1, max: 100 })],
-      run: async ({ quantidade }, interaction) => {
-        exigir(interaction, PermissionFlagsBits.ManageMessages);
-        await interaction.deferReply({ flags: 64 });
-        const mensagens = await interaction.channel.messages.fetch({ limit: quantidade });
-        const comAnexo = [...mensagens.filter((m) => m.attachments.size > 0).values()];
-        const apagadas = await interaction.channel.bulkDelete(comAnexo, true).catch(() => null);
-        await interaction.editReply({
-          embeds: [embed.success(`📎 Apaguei **${apagadas?.size ?? 0}** mensagens com anexo.`)],
-        });
-        return null;
+      name: 'canais-inativos',
+      description: 'Lista canais de texto sem mensagens recentes.',
+      options: [opt.inteiro('dias', 'Período sem mensagem, em dias', true, { min: 1, max: 3650 })],
+      run: ({ dias }, interaction) => {
+        if (!interaction.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+          throw aviso('Você precisa da permissão **Gerenciar Canais** para ver essa lista.');
+        }
+        const limite = Date.now() - dias * 86_400_000;
+        const tipos = new Set([ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum]);
+        const canais = interaction.guild.channels.cache
+          .filter((canal) => tipos.has(canal.type))
+          .map((canal) => {
+            const ultima = canal.lastMessageId ? SnowflakeUtil.timestampFrom(canal.lastMessageId) : null;
+            return !ultima || ultima < limite ? { canal, ultima } : null;
+          })
+          .filter(Boolean)
+          .sort((a, b) => (a.ultima ?? 0) - (b.ultima ?? 0));
+
+        return {
+          embeds: [
+            embed.base(colors.neutral)
+              .setTitle(`Canais sem mensagem há ${dias} dias (${canais.length})`)
+              .setDescription(
+                truncate(
+                  canais
+                    .map(({ canal, ultima }) =>
+                      `${canal} — ${ultima ? `<t:${Math.floor(ultima / 1000)}:R>` : 'sem mensagem registrada'}`,
+                    )
+                    .join('\n') || '_Nenhum._',
+                  4000,
+                ),
+              ),
+          ],
+        };
       },
     },
     {
@@ -401,28 +456,22 @@ export default familia({
       },
     },
     {
-      name: 'ficha-membro',
-      description: 'Ficha rápida de um membro para moderação.',
-      options: [MEMBRO],
-      run: async ({ membro }, interaction) => {
-        const alvo = await interaction.guild.members.fetch(membro.id).catch(() => null);
-        if (!alvo) throw aviso('Esse usuário não está no servidor.');
-        const idadeConta = Math.floor((Date.now() - alvo.user.createdTimestamp) / 86_400_000);
-        const suspeita = idadeConta < 7;
+      name: 'webhooks',
+      description: 'Lista os webhooks ativos e os canais em que publicam.',
+      run: async (_, interaction) => {
+        exigir(interaction, PermissionFlagsBits.ManageWebhooks);
+        const webhooks = await interaction.guild.fetchWebhooks();
+        const linhas = [...webhooks.values()]
+          .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+          .map(
+            (webhook) =>
+              `**${webhook.name}** — <#${webhook.channelId}>${webhook.owner ? ` · criado por ${webhook.owner.tag}` : ''}`,
+          );
         return {
           embeds: [
-            embed.base(suspeita ? colors.warning : colors.primary)
-              .setTitle(alvo.user.tag)
-              .setThumbnail(alvo.displayAvatarURL({ size: 256 }))
-              .addFields(
-                { name: 'ID', value: `\`${alvo.id}\``, inline: true },
-                { name: 'Conta criada', value: `<t:${Math.floor(alvo.user.createdTimestamp / 1000)}:R>`, inline: true },
-                { name: 'Entrou aqui', value: alvo.joinedTimestamp ? `<t:${Math.floor(alvo.joinedTimestamp / 1000)}:R>` : '—', inline: true },
-                { name: 'Cargo mais alto', value: `${alvo.roles.highest}`, inline: true },
-                { name: 'Castigo', value: alvo.isCommunicationDisabled() ? `até <t:${Math.floor(alvo.communicationDisabledUntilTimestamp / 1000)}:R>` : 'não', inline: true },
-                { name: 'Impulsiona', value: alvo.premiumSince ? 'sim' : 'não', inline: true },
-              )
-              .setFooter(suspeita ? { text: '⚠️ Conta criada há menos de 7 dias' } : null),
+            embed.base(colors.primary)
+              .setTitle(`Webhooks ativos (${linhas.length})`)
+              .setDescription(truncate(linhas.join('\n') || '_Nenhum webhook ativo._', 4000)),
           ],
         };
       },

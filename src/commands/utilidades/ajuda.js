@@ -3,6 +3,7 @@ import { colors } from '../../config.js';
 import { embed, replyError } from '../../lib/embeds.js';
 import { isOwner } from '../../lib/owner.js';
 import { rotasDoComando } from '../../lib/rotas.js';
+import { nomeLocalizado, nomePtBr, semAcentos } from '../../lib/localizacao.js';
 
 const CATEGORIES = {
   moderacao: { label: '🛡️ Moderação', order: 1 },
@@ -36,11 +37,11 @@ export default {
     .setContexts(InteractionContextType.Guild, InteractionContextType.BotDM),
 
   async autocomplete(interaction, client) {
-    const focused = interaction.options.getFocused().toLowerCase();
+    const focused = semAcentos(interaction.options.getFocused());
     const choices = [...client.commands.keys()]
-      .filter((name) => name.includes(focused))
+      .filter((name) => semAcentos(nomePtBr(name)).includes(focused))
       .slice(0, 25)
-      .map((name) => ({ name: `/${name}`, value: name }));
+      .map((name) => ({ name: `/${nomePtBr(name)}`, value: name }));
 
     await interaction.respond(choices);
   },
@@ -59,7 +60,7 @@ export default {
       if (command.ownerOnly && !owner) continue;
 
       const category = command.category ?? 'utilidades';
-      const routes = rotasDoComando(command);
+      const routes = rotasDoComando(command, 'pt-BR');
 
       if (!grouped.has(category)) grouped.set(category, []);
       grouped.get(category).push(...routes);
@@ -136,13 +137,19 @@ function paginateRouteSections(sections, maxLength = 3500) {
 }
 
 async function showCommand(interaction, client, name) {
-  const command = client.commands.get(name);
+  const nomeInterno = client.commands.has(name)
+    ? name
+    : [...client.commands.keys()].find(
+        (candidate) => semAcentos(nomePtBr(candidate)) === semAcentos(name),
+      );
+  const command = client.commands.get(nomeInterno);
   if (!command) return replyError(interaction, `O comando \`/${name}\` não existe.`);
 
   const json = command.data.toJSON();
+  const nomeComando = nomeLocalizado(json);
   const detail = embed
     .base(colors.primary)
-    .setTitle(`/${json.name}`)
+    .setTitle(`/${nomeComando}`)
     .setDescription(json.description)
     .addFields({
       name: 'Categoria',
@@ -162,7 +169,9 @@ async function showCommand(interaction, client, name) {
     // Um campo de embed aceita 1024 caracteres. Com 25 subcomandos descritos a
     // lista passa disso e o Discord recusa a mensagem inteira, então quebramos
     // em quantos campos forem necessários.
-    const linhas = subcommands.map((sub) => `\`/${json.name} ${sub.name}\` — ${sub.description}`);
+    const linhas = subcommands.map(
+      (sub) => `\`/${nomeComando} ${nomeLocalizado(sub)}\` — ${sub.description}`,
+    );
     let parte = [];
     let tamanho = 0;
     let indice = 0;
@@ -187,10 +196,14 @@ async function showCommand(interaction, client, name) {
   }
 
   for (const group of groups) {
+    const nomeGrupo = nomeLocalizado(group);
     detail.addFields({
-      name: `Grupo: ${group.name}`,
+      name: `Grupo: ${nomeGrupo}`,
       value: (group.options ?? [])
-        .map((sub) => `\`/${json.name} ${group.name} ${sub.name}\` — ${sub.description}`)
+        .map(
+          (sub) =>
+            `\`/${nomeComando} ${nomeGrupo} ${nomeLocalizado(sub)}\` — ${sub.description}`,
+        )
         .join('\n'),
     });
   }
@@ -201,7 +214,7 @@ async function showCommand(interaction, client, name) {
       value: plainOptions
         .map(
           (option) =>
-            `\`${option.name}\`${option.required ? ' *(obrigatório)*' : ''} — ${option.description}`,
+            `\`${nomeLocalizado(option)}\`${option.required ? ' *(obrigatório)*' : ''} — ${option.description}`,
         )
         .join('\n'),
     });

@@ -131,8 +131,9 @@ function valida(nomeComando, subs) {
     if (vistos.has(sub.name)) throw new Error(`/${nomeComando}: subcomando "${sub.name}" duplicado.`);
     vistos.add(sub.name);
 
-    if (!/^[a-z0-9_-]{1,32}$/.test(sub.name)) {
-      throw new Error(`/${nomeComando} ${sub.name}: nome inválido (use a-z, 0-9, _ e -, até 32).`);
+    const nomeValido = /^[-_'\p{L}\p{N}\p{Script=Devanagari}\p{Script=Thai}]{1,32}$/u;
+    if (!nomeValido.test(sub.name) || sub.name !== sub.name.toLocaleLowerCase('pt-BR')) {
+      throw new Error(`/${nomeComando} ${sub.name}: nome inválido (use letras minúsculas, números, _ e -, até 32).`);
     }
     if (sub.description.length > 100) {
       throw new Error(`/${nomeComando} ${sub.name}: descrição com ${sub.description.length} caracteres (máx. 100).`);
@@ -141,6 +142,9 @@ function valida(nomeComando, subs) {
       throw new Error(`/${nomeComando} ${sub.name}: opções demais.`);
     }
     for (const o of sub.options ?? []) {
+      if (!nomeValido.test(o.name) || o.name !== o.name.toLocaleLowerCase('pt-BR')) {
+        throw new Error(`/${nomeComando} ${sub.name} ${o.name}: nome inválido.`);
+      }
       if (o.description.length > 100) {
         throw new Error(`/${nomeComando} ${sub.name} ${o.name}: descrição longa demais.`);
       }

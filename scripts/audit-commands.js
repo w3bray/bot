@@ -100,6 +100,13 @@ const ROTAS_REMOVIDAS = [
   '/jogo nunca-fiz',
   '/jogo sorteio-rapido',
   '/meta-economia',
+  '/moderacao limpar-bots',
+  '/moderacao limpar-links',
+  '/moderacao limpar-anexos',
+  '/moderacao ficha-membro',
+  '/converter segundos',
+  '/tempo ano-novo',
+  '/servidor contagem',
 ];
 
 const ROTAS_NOVAS = [
@@ -162,6 +169,13 @@ const ROTAS_NOVAS = [
   '/jogo sudoku',
   '/jogo categoria-relampago',
   '/jogo palavra-proibida',
+  '/moderacao auditar-permissoes',
+  '/moderacao cargos-vazios',
+  '/moderacao canais-inativos',
+  '/moderacao webhooks',
+  '/converter graus-dms',
+  '/tempo adicionar-dias-uteis',
+  '/servidor canais-sem-categoria',
 ];
 
 const falhas = [];
@@ -172,12 +186,13 @@ const conferir = (condicao, mensagem) => {
 let banco;
 
 try {
-  const [{ Collection }, { loadCommands }, rotas, bancoModulo, portugues] = await Promise.all([
+  const [{ Collection }, { loadCommands }, rotas, bancoModulo, portugues, localizacao] = await Promise.all([
     import('discord.js'),
     import('../src/handlers/loader.js'),
     import('../src/lib/rotas.js'),
     import('../src/lib/db.js'),
     import('../src/lib/portugues.js'),
+    import('../src/lib/localizacao.js'),
   ]);
   banco = bancoModulo.db;
 
@@ -214,24 +229,65 @@ try {
   };
 
   const validarNome = (nome, rota) => {
-    conferir(/^[a-z0-9-]{1,32}$/.test(nome), `${rota} usa um nome fora do padrão: "${nome}".`);
+    const permitido = /^[-_'\p{L}\p{N}\p{Script=Devanagari}\p{Script=Thai}]{1,32}$/u;
+    conferir(permitido.test(nome), `${rota} usa um nome fora do padrão oficial: "${nome}".`);
+    conferir(nome === nome.toLocaleLowerCase('pt-BR'), `${rota} usa letra maiúscula no nome: "${nome}".`);
+  };
+
+  let nomesLocalizados = 0;
+  let rotulosComAcento = 0;
+  const escolhasExibidas = new Set();
+  const validarLocalizacao = (item, rota) => {
+    const esperado = localizacao.nomePtBr(item.name);
+    const exibido = item.name_localizations?.['pt-BR'] ?? item.name;
+    if (esperado !== item.name) nomesLocalizados += 1;
+    conferir(exibido === esperado, `${rota} deveria aparecer como "${esperado}" em pt-BR; aparece como "${exibido}".`);
+    validarNome(exibido, `${rota} (pt-BR)`);
+  };
+
+  const validarEscolhas = (item, rota) => {
+    for (const escolha of item.choices ?? []) {
+      escolhasExibidas.add(escolha.name);
+      if (/[áéíóúâêôãõç]/i.test(escolha.name)) rotulosComAcento += 1;
+      conferir(escolha.name.length >= 1 && escolha.name.length <= 100, `${rota} tem um rótulo de opção fora do limite.`);
+      conferir(
+        escolha.name === localizacao.rotuloPtBr(escolha.name),
+        `${rota} exibe o rótulo sem revisão: "${escolha.name}".`,
+      );
+    }
+    for (const opcao of item.options ?? []) validarEscolhas(opcao, `${rota} ${opcao.name}`);
   };
 
   for (const command of client.commands.values()) {
     const json = command.data.toJSON();
     validarNome(json.name, `/${json.name}`);
+    validarLocalizacao(json, `/${json.name}`);
+    validarEscolhas(json, `/${json.name}`);
     validarDescricao(json.description, `/${json.name}`, true);
     const tamanho = tamanhoDefinicao(json);
     conferir(tamanho <= 8_000, `/${json.name} usa ${tamanho} caracteres na definição; o limite é 8.000.`);
 
     for (const option of json.options ?? []) {
       validarNome(option.name, `/${json.name} ${option.name}`);
+      validarLocalizacao(option, `/${json.name} ${option.name}`);
       validarDescricao(option.description, `/${json.name} ${option.name}`, option.type <= 2);
       for (const sub of option.options ?? []) {
         validarNome(sub.name, `/${json.name} ${option.name} ${sub.name}`);
+        validarLocalizacao(sub, `/${json.name} ${option.name} ${sub.name}`);
         validarDescricao(sub.description, `/${json.name} ${option.name} ${sub.name}`, sub.type === 1);
       }
     }
+  }
+
+  conferir(nomesLocalizados > 0, 'Nenhum nome recebeu a localização pt-BR com acentuação.');
+  for (const rotulo of ['centímetro', 'mês', 'nó', 'onça', 'pé', 'quilômetro', 'xícara']) {
+    conferir(escolhasExibidas.has(rotulo), `O menu de unidades não exibe "${rotulo}" com a grafia correta.`);
+  }
+  const rotasEmPortugues = new Set(
+    [...client.commands.values()].flatMap((command) => rotas.rotasDoComando(command, 'pt-BR')),
+  );
+  for (const rota of ['/matemática calcular', '/moderação auditar-permissões', '/sugestão enviar']) {
+    conferir(rotasEmPortugues.has(rota), `A ajuda não exibe a rota acentuada ${rota}.`);
   }
 
   const arquivosDeTexto = [
@@ -255,7 +311,18 @@ try {
     conferir(plurais.length === 0, `${path.relative(raiz, arquivo)} usa plural artificial: ${[...new Set(plurais)].join(', ')}.`);
     const termosInfantis = conteudo.match(linguagemInfantil) ?? [];
     conferir(termosInfantis.length === 0, `${path.relative(raiz, arquivo)} ainda usa linguagem infantil: ${[...new Set(termosInfantis)].join(', ')}.`);
+
+    if (arquivo.endsWith('.js')) {
+      const referencias = conteudoSemImports.match(/\/[-\p{L}\p{N}]+(?: [-\p{L}\p{N}]+){0,2}/gu) ?? [];
+      const semAcento = referencias.filter((referencia) => localizarReferencia(referencia, localizacao) !== referencia);
+      conferir(
+        semAcento.length === 0,
+        `${path.relative(raiz, arquivo)} exibe comandos sem acento: ${[...new Set(semAcento)].join(', ')}.`,
+      );
+    }
   }
+
+  validarReferenciasDoReadme(fs.readFileSync(path.join(raiz, 'README.md'), 'utf8'), localizacao, conferir);
 
   if (falhas.length > 0) {
     console.error(`❌ Auditoria reprovada com ${falhas.length} problema(s):`);
@@ -263,6 +330,8 @@ try {
     process.exitCode = 1;
   } else {
     console.log('✅ 100 comandos principais, 400 rotas, nomes atuais e descrições revisadas.');
+    console.log(`✅ ${nomesLocalizados} nomes de comandos, subcomandos e opções aparecem com acentuação pt-BR.`);
+    console.log(`✅ ${rotulosComAcento} rótulos acentuados foram conferidos nos menus de opções.`);
     console.log(`✅ ${ROTAS_REMOVIDAS.length} rotas duplicadas ou pouco úteis foram removidas.`);
     console.log(`✅ ${ROTAS_NOVAS.length} rotas substitutas foram conferidas.`);
   }
@@ -279,6 +348,34 @@ function listarArquivos(diretorio) {
     else encontrados.push(caminho);
   }
   return encontrados;
+}
+
+function localizarReferencia(referencia, localizacao) {
+  return `/${referencia.slice(1).split(' ').map(localizacao.nomePtBr).join(' ')}`;
+}
+
+function validarReferenciasDoReadme(conteudo, localizacao, conferir) {
+  const entreCrases = [...conteudo.matchAll(/`(\/[-\p{L}\p{N}]+(?: [-\p{L}\p{N}]+){0,2})`/gu)]
+    .map((resultado) => resultado[1]);
+  const incorretas = entreCrases.filter(
+    (referencia) => localizarReferencia(referencia, localizacao) !== referencia,
+  );
+
+  for (const linha of conteudo.split('\n').filter((item) => item.startsWith('/'))) {
+    for (const parte of linha.split(/\s+/)) {
+      const identificador = parte.startsWith('/')
+        ? parte.slice(1)
+        : parte.includes(':')
+          ? parte.slice(0, parte.indexOf(':'))
+          : parte;
+      if (identificador && localizacao.nomePtBr(identificador) !== identificador) incorretas.push(parte);
+    }
+  }
+
+  conferir(
+    incorretas.length === 0,
+    `README.md exibe comandos ou opções sem acento: ${[...new Set(incorretas)].join(', ')}.`,
+  );
 }
 
 /** Soma nomes, descrições e valores conforme o limite de definição do Discord. */

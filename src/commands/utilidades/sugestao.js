@@ -87,7 +87,7 @@ async function send(interaction) {
   if (!settings.suggestion_channel) {
     return replyError(
       interaction,
-      'O canal de sugestões ainda não foi configurado. A equipe pode defini-lo com `/configurar sugestoes`.',
+      'O canal de sugestões ainda não foi configurado. A equipe pode defini-lo com `/configurar sugestões`.',
     );
   }
 

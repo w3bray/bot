@@ -53,7 +53,7 @@ async function showLevels(interaction) {
         .setTitle(`📈 Ranking de níveis · ${interaction.guild.name}`)
         .setDescription(lines.join('\n'))
         .setThumbnail(interaction.guild.iconURL({ size: 256 }))
-        .setFooter({ text: 'Use /nivel para ver sua posição detalhada.' }),
+        .setFooter({ text: 'Use /nível para ver sua posição detalhada.' }),
     ],
   });
 }
@@ -64,7 +64,7 @@ async function showRichest(interaction) {
 
   if (rows.length === 0) {
     return interaction.editReply({
-      embeds: [embed.info('Ainda não há ninguém no ranking. Use `/diario` para começar.')],
+      embeds: [embed.info('Ainda não há ninguém no ranking. Use `/diário` para começar.')],
     });
   }
 
