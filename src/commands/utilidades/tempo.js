@@ -219,12 +219,29 @@ export default familia({
       },
     },
     {
-      name: 'ano-novo',
-      description: 'Quanto falta para o ano novo.',
-      run: () => {
-        const agora = new Date();
-        const virada = new Date(Date.UTC(agora.getUTCFullYear() + 1, 0, 1, 3)); // meia-noite em Brasília
-        return `🎆 Faltam <t:${Math.floor(virada.getTime() / 1000)}:R> para **${virada.getUTCFullYear()}**`;
+      name: 'adicionar-dias-uteis',
+      description: 'Adiciona ou subtrai dias úteis de uma data, ignorando fins de semana.',
+      options: [
+        DATA(),
+        opt.inteiro('dias', 'Use um valor negativo para subtrair', true, { min: -10000, max: 10000 }),
+      ],
+      run: ({ data, dias }) => {
+        const resultado = lerData(data);
+        const direcao = dias < 0 ? -1 : 1;
+        let restantes = Math.abs(dias);
+
+        while (restantes > 0) {
+          resultado.setUTCDate(resultado.getUTCDate() + direcao);
+          if (![0, 6].includes(resultado.getUTCDay())) restantes -= 1;
+        }
+
+        return [
+          `**Data inicial:** ${emFuso(lerData(data), 'UTC', { dateStyle: 'long' })}`,
+          `**Ajuste:** ${dias >= 0 ? '+' : '−'}${Math.abs(dias)} dias úteis`,
+          `**Resultado:** ${emFuso(resultado, 'UTC', { dateStyle: 'full' })}`,
+          '',
+          '_Feriados não são descontados automaticamente._',
+        ].join('\n');
       },
     },
     {

@@ -7,26 +7,34 @@
  * que se contradizem entre `/ajuda` e a apresentação em servidor novo.
  */
 
+import { nomeLocalizado } from './localizacao.js';
+
 /** Todos os caminhos executáveis de um comando: `/x`, `/x sub`, `/x grupo sub`. */
-export function rotasDoComando(command) {
+export function rotasDoComando(command, localidade) {
   const json = command.data.toJSON();
   const rotas = [];
+  const nomeComando = localidade ? nomeLocalizado(json, localidade) : json.name;
 
   for (const option of json.options ?? []) {
     if (option.type === 1) {
-      rotas.push(`/${json.name} ${option.name}`);
+      const nomeOpcao = localidade ? nomeLocalizado(option, localidade) : option.name;
+      rotas.push(`/${nomeComando} ${nomeOpcao}`);
       continue;
     }
 
     if (option.type === 2) {
       for (const sub of option.options ?? []) {
-        if (sub.type === 1) rotas.push(`/${json.name} ${option.name} ${sub.name}`);
+        if (sub.type === 1) {
+          const nomeGrupo = localidade ? nomeLocalizado(option, localidade) : option.name;
+          const nomeSub = localidade ? nomeLocalizado(sub, localidade) : sub.name;
+          rotas.push(`/${nomeComando} ${nomeGrupo} ${nomeSub}`);
+        }
       }
     }
   }
 
   // Comando sem subcomando é ele mesmo uma rota.
-  return rotas.length > 0 ? rotas : [`/${json.name}`];
+  return rotas.length > 0 ? rotas : [`/${nomeComando}`];
 }
 
 /** Quantas rotas executáveis existem numa coleção de comandos. */

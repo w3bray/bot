@@ -332,7 +332,7 @@ async function setLevel(interaction) {
 
   const user = interaction.options.getUser('usuario');
   const level = interaction.options.getInteger('nivel');
-  // Guardamos o XP exato do início do nível para o /nivel continuar coerente.
+  // Guardamos o XP exato do início do nível para o /nível continuar coerente.
   const xp = xpForLevel(level);
 
   upsertLevel.run({ guild_id: interaction.guildId, user_id: user.id, xp, level: levelFromXp(xp) });

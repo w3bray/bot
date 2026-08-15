@@ -56,7 +56,7 @@ async function showTop(interaction) {
 
   if (rows.length === 0) {
     return interaction.reply({
-      embeds: [embed.info('Ninguém recebeu reputação ainda. Use `/reputacao dar` para começar.')],
+      embeds: [embed.info('Ninguém recebeu reputação ainda. Use `/reputação dar` para começar.')],
     });
   }
 

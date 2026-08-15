@@ -230,7 +230,7 @@ async function setFilters(interaction) {
   setAutomod(interaction.guildId, patch);
 
   await interaction.reply({
-    embeds: [embed.success('Filtros atualizados. Use `/auto-moderacao ver` para conferir.')],
+    embeds: [embed.success('Filtros atualizados. Use `/auto-moderação ver` para conferir.')],
     flags: MessageFlags.Ephemeral,
   });
 }
@@ -254,7 +254,7 @@ async function setLimits(interaction) {
   setAutomod(interaction.guildId, patch);
 
   await interaction.reply({
-    embeds: [embed.success('Limites atualizados. Use `/auto-moderacao ver` para conferir.')],
+    embeds: [embed.success('Limites atualizados. Use `/auto-moderação ver` para conferir.')],
     flags: MessageFlags.Ephemeral,
   });
 }

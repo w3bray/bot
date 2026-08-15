@@ -1,4 +1,5 @@
 import { aviso, familia, opt } from '../../lib/familia.js';
+import { rotuloPtBr } from '../../lib/localizacao.js';
 
 /**
  * Conversão por fator para uma unidade de referência.
@@ -93,7 +94,7 @@ const TABELAS = {
   },
 };
 
-const rotulo = (nome) => nome.replaceAll('_', ' ');
+const rotulo = (nome) => rotuloPtBr(nome);
 
 const escolhas = (categoria) =>
   Object.keys(TABELAS[categoria].unidades)
@@ -372,18 +373,29 @@ export default familia({
       run: ({ numero }) => `**${numero.toLocaleString('pt-BR')}** = **${porExtenso(numero)}**`,
     },
     {
-      name: 'segundos',
-      description: 'Transforma segundos em dias, horas e minutos.',
-      options: [opt.inteiro('segundos', 'Quantidade de segundos', true, { min: 0 })],
-      run: ({ segundos }) => {
-        const partes = [
-          [Math.floor(segundos / 86400), 'dia'],
-          [Math.floor((segundos % 86400) / 3600), 'hora'],
-          [Math.floor((segundos % 3600) / 60), 'minuto'],
-          [segundos % 60, 'segundo'],
-        ].filter(([n]) => n > 0);
-        if (partes.length === 0) return '**0 segundos**';
-        return partes.map(([n, nome]) => `**${n}** ${nome}${n === 1 ? '' : 's'}`).join(', ');
+      name: 'graus-dms',
+      description: 'Converte latitude e longitude decimais para graus, minutos e segundos.',
+      options: [
+        opt.numero('latitude', 'Latitude decimal, de -90 a 90', true, { min: -90, max: 90 }),
+        opt.numero('longitude', 'Longitude decimal, de -180 a 180', true, { min: -180, max: 180 }),
+      ],
+      run: ({ latitude, longitude }) => {
+        const dms = (valor, positivo, negativo) => {
+          const absoluto = Math.abs(valor);
+          const graus = Math.floor(absoluto);
+          const minutosDecimais = (absoluto - graus) * 60;
+          const minutos = Math.floor(minutosDecimais);
+          const segundos = (minutosDecimais - minutos) * 60;
+          const hemisferio = valor >= 0 ? positivo : negativo;
+          return `${graus}° ${minutos}′ ${segundos.toFixed(2)}″ ${hemisferio}`;
+        };
+
+        return [
+          `**Latitude:** ${dms(latitude, 'N', 'S')}`,
+          `**Longitude:** ${dms(longitude, 'L', 'O')}`,
+          '',
+          `Mapa: https://www.google.com/maps?q=${latitude},${longitude}`,
+        ].join('\n');
       },
     },
   ],

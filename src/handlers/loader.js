@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { logger } from '../lib/logger.js';
+import { localizarNomesPtBr } from '../lib/localizacao.js';
 
 /** Lista recursivamente todos os arquivos .js de um diretório. */
 export function walk(directory) {
@@ -36,6 +37,9 @@ export async function loadCommands(client, directory) {
       logger.warn(`Comando inválido (precisa de "data" e "execute"): ${file}`);
       continue;
     }
+    localizarNomesPtBr(module.data);
+    for (const atalho of module.atalhos ?? []) localizarNomesPtBr(atalho.data);
+
     // A categoria vem do nome da pasta que contém o arquivo.
     module.category = path.basename(path.dirname(file));
     client.commands.set(module.data.name, module);

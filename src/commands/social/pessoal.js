@@ -224,7 +224,7 @@ export default familia({
       run: ({ data }, interaction) => {
         const valor = dataValida(data);
         gravarPref.run(...chaves(interaction), 'aniversario', valor);
-        return privado(`🎂 Anotei: **${valor}**. Use \`/pessoal aniversario-proximos\` para ver quem faz aniversário logo.`);
+        return privado(`🎂 Anotei: **${valor}**. Use \`/pessoal aniversários-próximos\` para ver os próximos aniversários.`);
       },
     },
     {

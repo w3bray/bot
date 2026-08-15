@@ -486,23 +486,27 @@ export default familia({
         ),
     },
     {
-      name: 'contagem',
-      description: 'Contagem rápida de tudo no servidor.',
+      name: 'canais-sem-categoria',
+      description: 'Lista canais que estão fora de qualquer categoria.',
       run: (_, interaction) => {
-        const { guild } = interaction;
-        const c = guild.channels.cache;
-        return bloco(
-          [
-            `Membros ......... ${guild.memberCount}`,
-            `Cargos .......... ${guild.roles.cache.size - 1}`,
-            `Emojis .......... ${guild.emojis.cache.size}`,
-            `Figurinhas ...... ${guild.stickers.cache.size}`,
-            `Canais de texto . ${c.filter((x) => x.type === ChannelType.GuildText).size}`,
-            `Canais de voz ... ${c.filter((x) => x.type === ChannelType.GuildVoice).size}`,
-            `Categorias ...... ${c.filter((x) => x.type === ChannelType.GuildCategory).size}`,
-            `Impulsos ........ ${guild.premiumSubscriptionCount ?? 0}`,
-          ].join('\n'),
-        );
+        const canais = interaction.guild.channels.cache
+          .filter(
+            (canal) =>
+              canal.type !== ChannelType.GuildCategory &&
+              !canal.isThread?.() &&
+              canal.parentId === null,
+          )
+          .sort((a, b) => a.rawPosition - b.rawPosition);
+
+        return {
+          embeds: [
+            embed.base(colors.primary)
+              .setTitle(`Canais sem categoria (${canais.size})`)
+              .setDescription(
+                lista(canais.map((canal) => `${canal}`), '_Todos os canais estão organizados em categorias._'),
+              ),
+          ],
+        };
       },
     },
   ],

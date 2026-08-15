@@ -9,6 +9,10 @@ todo o limite de comandos globais do Discord —,
 persistência em SQLite e
 carregamento automático de comandos, eventos e botões.
 
+No Discord em português do Brasil, comandos, subcomandos e opções aparecem com a
+acentuação correta, como `/matemática`, `/moderação auditar-permissões` e
+`usuário:@membro`.
+
 ---
 
 ## Índice
@@ -150,17 +154,17 @@ Depois de convidar o bot, rode estes comandos (todos exigem **Gerenciar Servidor
 /configurar registros tipo:Moderação canal:#registros-mod
 /configurar registros tipo:Servidor canal:#registros-servidor
 /configurar boas-vindas canal:#bem-vindos mensagem:Boas-vindas ao {server}, {user}!
-/configurar cargo-automatico cargo:@Membro
-/configurar niveis ativar:true canal:#níveis
-/configurar recompensa nivel:10 cargo:@Ativo
-/configurar destaques canal:#destaques minimo:5
+/configurar cargo-automático cargo:@Membro
+/configurar níveis ativar:true canal:#níveis
+/configurar recompensa nível:10 cargo:@Ativo
+/configurar destaques canal:#destaques mínimo:5
 /configurar atendimento categoria:Atendimento cargo:@Suporte registros:#registros-atendimento
 /atendimento painel
-/auto-moderacao filtros convites:true excesso-mensagens:true
-/auto-moderacao punicao acao:Apagar e castigar minutos:10
+/auto-moderação filtros convites:true excesso-mensagens:true
+/auto-moderação punição ação:Apagar e castigar minutos:10
 ```
 
-Confira tudo com `/configurar ver` e `/auto-moderacao ver`.
+Confira tudo com `/configurar ver` e `/auto-moderação ver`.
 
 **Marcadores** aceitos nas mensagens de boas-vindas e saída: `{user}` (menção),
 `{username}`, `{tag}`, `{server}`, `{count}` (total de membros).
@@ -179,43 +183,44 @@ Na mensagem de nível: `{user}`, `{username}`, `{level}`, `{server}`.
 | `/expulsar` | Expulsa um membro |
 | `/castigo aplicar` · `/castigo remover` | Aplica ou remove um castigo temporário (até 28 dias) |
 | `/avisar` | Advertência. Aos 3, 5 e 7 avisos aplica castigo/expulsão automaticamente |
-| `/avisos listar` · `remover` · `limpar` | Gerencia as advertências de um membro |
+| `/avisos listar` · `/avisos remover` · `/avisos limpar` | Gerencia as advertências de um membro |
 | `/limpar` | Apaga até 100 mensagens, com filtro por usuário, bots, anexos ou links |
-| `/canal trancar` · `destrancar` · `lento` | Controla o canal |
-| `/cargo adicionar` · `remover` | Gerencia cargos de um membro |
+| `/canal trancar` · `/canal destrancar` · `/canal lento` | Controla o canal |
+| `/cargo adicionar` · `/cargo remover` | Gerencia cargos de um membro |
 | `/apelido` | Altera ou remove o apelido |
-| `/historico usuario` · `caso` | Consulta o histórico de punições |
+| `/histórico usuário` · `/histórico caso` | Consulta o histórico de punições |
 
 ### ⚙️ Configuração
 
 | Comando | O que faz |
 |---|---|
 | `/configurar ver` | Mostra toda a configuração atual |
-| `/configurar registros` · `boas-vindas` · `saida` · `cargo-automatico` | Canais e mensagens automáticas |
-| `/configurar niveis` · `recompensa` | Sistema de XP e cargos por nível |
-| `/configurar destaques` · `atendimento` · `moeda` | Demais módulos |
-| `/auto-moderacao ver` · `filtros` · `limites` · `punicao` · `palavras` · `ignorar` | Moderação automática |
+| `/configurar registros` · `/configurar boas-vindas` · `/configurar saída` · `/configurar cargo-automático` | Canais e mensagens automáticas |
+| `/configurar níveis` · `/configurar recompensa` | Sistema de XP e cargos por nível |
+| `/configurar destaques` · `/configurar atendimento` · `/configurar moeda` | Demais módulos |
+| `/auto-moderação ver` · `/auto-moderação filtros` · `/auto-moderação limites` · `/auto-moderação punição` · `/auto-moderação palavras` · `/auto-moderação ignorar` | Moderação automática |
 | `/painel-cargos` | Publica um painel de cargos com botões |
 
 ### 🔧 Utilidades
 
-`/ajuda` · `/ping` · `/info-usuario` · `/info-servidor` · `/avatar` · `/info-cargo` · `/info-bot` ·
-`/lembrete criar|listar|cancelar` · `/enquete` · `/ausente` · `/apagada` ·
-`/sugestao enviar|decidir` · `/baixar`
+`/ajuda` · `/ping` · `/info-usuário` · `/info-servidor` · `/avatar` · `/info-cargo` · `/info-bot` ·
+`/lembrete criar` · `/lembrete listar` · `/lembrete cancelar` · `/enquete` · `/ausente` · `/apagada` ·
+`/sugestão enviar` · `/sugestão decidir` · `/baixar`
 
 ### 💞 Social
 
-`/perfil` · `/biografia` · `/reputacao dar|ranking` · `/casar` · `/divorciar`
+`/perfil` · `/biografia` · `/reputação dar` · `/reputação ranking` · `/casar` · `/divorciar`
 
 ### 📈 Níveis e 🪙 Economia
 
-`/nivel` · `/ranking niveis` · `/ranking moedas` · `/saldo` · `/diario` · `/trabalhar` · `/pagar` ·
-`/apostar` · `/banco depositar|sacar` · `/roubar` · `/loja ver|comprar|inventario`
+`/nível` · `/ranking níveis` · `/ranking moedas` · `/saldo` · `/diário` · `/trabalhar` · `/pagar` ·
+`/apostar` · `/banco depositar` · `/banco sacar` · `/roubar` · `/loja ver` · `/loja comprar` · `/loja inventário`
 
 ### 🎫 Atendimento, 🎉 Sorteios, 🎮 Jogos e 🎲 Sorteios aleatórios
 
-`/atendimento abrir|fechar|adicionar|painel` · `/sorteio criar|encerrar|resortear` ·
-`/velha` · `/quiz` · `/dado` · `/escolher` · `/jokenpo` · `/ponderado` · `/amostra`
+`/atendimento abrir` · `/atendimento fechar` · `/atendimento adicionar` · `/atendimento painel` ·
+`/sorteio criar` · `/sorteio encerrar` · `/sorteio resortear` ·
+`/velha` · `/quiz` · `/dado` · `/escolher` · `/jokenpô` · `/ponderado` · `/amostra`
 
 ### 🏗️ Servidor
 
@@ -236,22 +241,22 @@ Exige **Gerenciar Servidor** de quem usa e **Gerenciar Canais** do bot (mais
 | Comando | Subcomandos | O que faz |
 |---|---|---|
 | `/texto` | 25 | Caixa, ordem, limpeza, contagem, frequência de letras, efeitos |
-| `/codigo` | 20 | Base64, hex, binário, Morse, César, MD5/SHA, Unicode, JSON, timestamp |
+| `/código` | 20 | Base64, hex, binário, Morse, César, MD5/SHA, Unicode, JSON, timestamp |
 
 ### 🔧 Mais utilidades
 
 | Comando | Subcomandos | O que faz |
 |---|---|---|
-| `/converter` | 25 | 13 famílias de unidades, bases numéricas, romanos, número por extenso |
-| `/matematica` | 21 | Expressões, estatística, primos, fatoração, juros, combinatória |
+| `/converter` | 25 | Unidades, bases numéricas, romanos, número por extenso e coordenadas em DMS |
+| `/matemática` | 21 | Expressões, estatística, primos, fatoração, juros, combinatória |
 | `/gerar` | 20 | Senhas, UUID, cores, dados de teste, README, changelog, curl e arquivos auxiliares |
-| `/tempo` | 18 | Fusos, contagens, idade, dias úteis, progresso do ano, timestamps |
+| `/tempo` | 18 | Fusos, contagens, idade, soma de dias úteis, progresso do ano e timestamps |
 | `/planejar` | 25 | Pautas, atas, decisões, riscos, prioridades, capacidade e comunicação |
 
-Também há `/estimativa` para cálculo PERT e `/avaliar-opcoes` para comparação ponderada
+Também há `/estimativa` para cálculo PERT e `/avaliar-opções` para comparação ponderada
 com critérios, notas e pesos definidos por quem usa.
 
-O avaliador de expressões do `/matematica calcular` é escrito à mão, sem `eval`: só
+O avaliador de expressões do `/matemática calcular` é escrito à mão, sem `eval`: só
 números e os operadores `+ - * / % ^ ( )` são reconhecidos. Uma string vinda do Discord
 nunca chega perto do interpretador.
 
@@ -259,7 +264,7 @@ nunca chega perto do interpretador.
 
 | Comando | Subcomandos | O que faz |
 |---|---|---|
-| `/aleatorio` | 25 | Sorteios ponderados, amostras, chaveamentos, distribuições e dados de teste |
+| `/aleatório` | 25 | Sorteios ponderados, amostras, chaveamentos, distribuições e dados de teste |
 | `/jogo` | 25 | Anagramas, lógica, sudoku, criptogramas e jogos de palavras — resposta em spoiler |
 
 Os jogos não guardam estado: a resposta vai escondida num `||spoiler||`, então cada
@@ -280,8 +285,8 @@ o bot não libera uma nova rodada antes da hora.
 | Comando | Subcomandos | O que faz |
 |---|---|---|
 | `/construir` | — | Monta o servidor a partir de um modelo pronto |
-| `/servidor` | 25 | Proprietário, cargos, canais, emojis, impulsos, banidos e permissões |
-| `/moderacao` | 25 | Limpezas filtradas, cargos em massa, canais de voz e auditoria |
+| `/servidor` | 25 | Proprietário, cargos, canais sem categoria, emojis, impulsos, banidos e permissões |
+| `/moderação` | 25 | Auditoria de permissões, cargos vazios, canais inativos, webhooks, cargos em massa e voz |
 
 ### 👑 Dono do bot
 
@@ -315,8 +320,8 @@ WARN  Acesso negado: fulano (123…) tentou /dono em Servidor X (456…).
 | `/dono registrar` | Atualiza os comandos globais e limpa registros antigos por servidor |
 | `/dono convite` | Gera o link para adicionar o bot em servidores ilimitados |
 | `/dono moedas` | Cria ou remove moedas de alguém |
-| `/dono nivel` | Define o nível de alguém |
-| `/dono estatisticas` | Servidores, membros, memória e latência somando todos os processos |
+| `/dono nível` | Define o nível de alguém |
+| `/dono estatísticas` | Servidores, membros, memória e latência somando todos os processos |
 
 Donos também **não pegam cooldown** em nenhum comando.
 
@@ -360,7 +365,7 @@ O Discord aceita no **máximo 100 comandos de barra por aplicação**. Não é l
 bot: passar disso faz o registro inteiro ser recusado e o bot fica com **zero** comandos.
 
 O projeto usa exatamente esse teto: **100 comandos de topo**, e os outros 300 vivem como
-subcomandos deles — `/texto titulo`, `/bolso comparar-patrimonio`. O preenchimento automático do Discord
+subcomandos deles — `/texto título`, `/bolso comparar-patrimônio`. O preenchimento automático do Discord
 acha qualquer um pelo nome.
 
 Os mais usados são promovidos a comando próprio: uma família declara
