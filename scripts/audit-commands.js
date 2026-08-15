@@ -172,13 +172,17 @@ const conferir = (condicao, mensagem) => {
 let banco;
 
 try {
-  const [{ Collection }, { loadCommands }, rotas, bancoModulo] = await Promise.all([
+  const [{ Collection }, { loadCommands }, rotas, bancoModulo, portugues] = await Promise.all([
     import('discord.js'),
     import('../src/handlers/loader.js'),
     import('../src/lib/rotas.js'),
     import('../src/lib/db.js'),
+    import('../src/lib/portugues.js'),
   ]);
   banco = bancoModulo.db;
+
+  conferir(portugues.quantidade(1, 'servidor') === '1 servidor', 'O singular de servidor está incorreto.');
+  conferir(portugues.quantidade(2, 'servidor') === '2 servidores', 'O plural de servidor está incorreto.');
 
   const client = { commands: new Collection() };
   await loadCommands(client, path.join(raiz, 'src', 'commands'));
