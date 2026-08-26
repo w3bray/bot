@@ -138,7 +138,7 @@ export default familia({
     },
     {
       name: 'media',
-      description: 'Média, mediana, moda e desvio padrão.',
+      description: 'Soma, média, mediana, moda e desvio padrão de uma lista.',
       options: [NUMEROS],
       run: ({ numeros }) => {
         const valores = lista(numeros);
@@ -164,15 +164,6 @@ export default familia({
           `Desvio padrão: **${fmt(Math.sqrt(variancia))}**`,
           `Mínimo: **${fmt(ordenados[0])}** · Máximo: **${fmt(ordenados[n - 1])}**`,
         ].join('\n');
-      },
-    },
-    {
-      name: 'somar',
-      description: 'Soma uma lista de números.',
-      options: [NUMEROS],
-      run: ({ numeros }) => {
-        const valores = lista(numeros);
-        return `Soma de **${valores.length}** números = **${fmt(valores.reduce((a, b) => a + b, 0))}**`;
       },
     },
     {

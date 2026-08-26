@@ -21,7 +21,7 @@ export default {
       return interaction.update({
         embeds: [
           embed.warning(
-            `<@${targetId}> recusou o pedido de <@${proposerId}>. Fica pra próxima. 💔`,
+            `<@${targetId}> recusou o pedido de <@${proposerId}>. Fica para a próxima. 💔`,
             '💔 Pedido recusado',
           ),
         ],
