@@ -2,7 +2,7 @@ import { InteractionContextType, PermissionFlagsBits, SlashCommandBuilder } from
 import { replyError } from '../../lib/embeds.js';
 import { renderPanel, renderPicker } from '../../components/builder.js';
 import { isOwner } from '../../lib/owner.js';
-import { EXTRAS, exigeDono, templatesPublicos } from '../../services/templates.js';
+import { EXTRAS_PADRAO, exigeDono, templatesPublicos } from '../../services/templates.js';
 
 export default {
   cooldown: 30,
@@ -44,7 +44,7 @@ export default {
     }
 
     // Com modelo escolhido já abrimos a prévia; sem ele, o menu de modelos.
-    const payload = requested ? renderPanel(requested, Object.keys(EXTRAS)) : renderPicker(dono);
+    const payload = requested ? renderPanel(requested, EXTRAS_PADRAO) : renderPicker(dono);
 
     await interaction.reply(payload);
   },

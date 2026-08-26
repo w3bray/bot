@@ -13,8 +13,10 @@ import { logger } from '../lib/logger.js';
 import { quantidade } from '../lib/portugues.js';
 import { isOwner } from '../lib/owner.js';
 import {
+  alvosDaLimpeza,
   buildServer,
   EXTRAS,
+  EXTRAS_PADRAO,
   exigeDono,
   planSummary,
   selectedCategories,
@@ -60,7 +62,8 @@ export function renderPicker(dono = false) {
           [
             'Escolha um modelo abaixo. Você verá **exatamente o que será criado** antes de confirmar.',
             '',
-            '> Nada é apagado: o construtor apenas **adiciona** categorias, canais e cargos ao que já existe.',
+            '> ⚠️ O construtor começa **apagando** os canais e cargos que já existem. Dá para',
+            '> desmarcar isso no painel seguinte, e nada acontece sem você confirmar duas vezes.',
           ].join('\n'),
         ),
     ],
@@ -107,12 +110,16 @@ export function renderPanel(templateKey, extras) {
       ),
     );
 
+  const limpando = extras.includes('limpar');
+
   const buttons = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId(`builder:criar:${templateKey}:${encodeExtras(extras)}`)
-      .setLabel(`Construir (${plan.channels} canais)`)
-      .setEmoji('🏗️')
-      .setStyle(ButtonStyle.Success),
+      // Com limpeza ligada o botão não constrói: leva para a tela de
+      // confirmação, que é onde o estrago fica escrito por extenso.
+      .setCustomId(`builder:${limpando ? 'confirmar' : 'criar'}:${templateKey}:${encodeExtras(extras)}`)
+      .setLabel(limpando ? `Apagar e montar (${plan.channels} canais)` : `Construir (${plan.channels} canais)`)
+      .setEmoji(limpando ? '🧨' : '🏗️')
+      .setStyle(limpando ? ButtonStyle.Danger : ButtonStyle.Success),
     new ButtonBuilder()
       .setCustomId('builder:voltar')
       .setLabel('Trocar modelo')
@@ -120,13 +127,13 @@ export function renderPanel(templateKey, extras) {
     new ButtonBuilder()
       .setCustomId('builder:cancelar')
       .setLabel('Cancelar')
-      .setStyle(ButtonStyle.Danger),
+      .setStyle(ButtonStyle.Secondary),
   );
 
   return {
     embeds: [
       embed
-        .base(template.color)
+        .base(limpando ? colors.danger : template.color)
         .setTitle(`${template.emoji} ${template.label}`)
         .setDescription(tree)
         .addFields(
@@ -136,7 +143,11 @@ export function renderPanel(templateKey, extras) {
             value: `**${plan.categories}** categorias · **${plan.channels}** canais · **${plan.roles}** cargos`,
           },
         )
-        .setFooter({ text: 'Nada será apagado. O construtor só adiciona.' }),
+        .setFooter({
+          text: limpando
+            ? 'Os canais e cargos atuais serão apagados antes de montar.'
+            : 'Nada será apagado. O construtor só adiciona ao que já existe.',
+        }),
     ],
     components: [new ActionRowBuilder().addComponents(extrasMenu), buttons],
     flags: MessageFlags.Ephemeral,
@@ -176,15 +187,26 @@ export default {
       const key = interaction.values[0];
       if (!permitido(interaction, key)) return replyError(interaction, 'Esse modelo não existe mais.');
       // Padrão generoso: tudo marcado, e quem não quiser desmarca no menu.
-      const panel = renderPanel(key, Object.keys(EXTRAS));
+      const panel = renderPanel(key, EXTRAS_PADRAO);
       return interaction.update({ embeds: panel.embeds, components: panel.components });
     }
 
-    if (action === 'extras') {
-      const [key] = args;
+    if (action === 'extras' || action === 'painel') {
+      const [key, rawExtras] = args;
       if (!permitido(interaction, key)) return replyError(interaction, 'Esse modelo não existe mais.');
-      const panel = renderPanel(key, interaction.values);
+      // 'extras' vem do menu e traz a seleção nova; 'painel' é o botão Voltar da
+      // confirmação, que devolve os mesmos extras pelo custom_id.
+      const escolhidos = action === 'extras' ? interaction.values : decodeExtras(rawExtras);
+      const panel = renderPanel(key, escolhidos);
       return interaction.update({ embeds: panel.embeds, components: panel.components });
+    }
+
+    if (action === 'confirmar') {
+      if (!permitido(interaction, args[0])) {
+        return replyError(interaction, 'Esse modelo não existe mais.');
+      }
+      const tela = renderConfirmacao(interaction, args);
+      return interaction.update({ embeds: tela.embeds, components: tela.components });
     }
 
     if (action === 'criar') {
@@ -195,6 +217,81 @@ export default {
     }
   },
 };
+
+/**
+ * A tela entre o clique e o estrago.
+ *
+ * Mostra os números reais do servidor — não uma frase genérica — porque
+ * "36 canais e 12 cargos serão apagados" faz alguém parar, e "isso é
+ * irreversível" não faz.
+ */
+function renderConfirmacao(interaction, [key, rawExtras]) {
+  const template = TEMPLATES[key];
+  const extras = decodeExtras(rawExtras);
+  const plan = planSummary(template, extras);
+  const alvos = alvosDaLimpeza(interaction.guild);
+
+  const protegidos = [...interaction.guild.channels.cache.values()].length - alvos.canais.length;
+
+  return {
+    embeds: [
+      embed
+        .base(colors.danger)
+        .setTitle('🧨 Confirma apagar o servidor inteiro?')
+        .setDescription(
+          [
+            `Vou apagar **${quantidade(alvos.canais.length, 'canal', 'canais')}** e ` +
+              `**${quantidade(alvos.cargos.length, 'cargo')}** deste servidor, e montar ` +
+              `**${template.label}** no lugar.`,
+            '',
+            '**Todo o histórico de mensagens desses canais some para sempre.** O Discord não',
+            'guarda cópia, não existe lixeira e nem você nem eu conseguimos trazer de volta.',
+          ].join('\n'),
+        )
+        .addFields(
+          {
+            name: 'Sai',
+            value: `**${alvos.canais.length}** canais · **${alvos.cargos.length}** cargos`,
+            inline: true,
+          },
+          {
+            name: 'Entra',
+            value: `**${plan.channels}** canais · **${plan.roles}** cargos`,
+            inline: true,
+          },
+          ...(protegidos > 0
+            ? [
+                {
+                  name: 'Fica de pé',
+                  value:
+                    `**${protegidos}** ${protegidos === 1 ? 'canal que não consigo apagar' : 'canais que não consigo apagar'}` +
+                    ' — canal de regras ou de avisos de um servidor de comunidade, ou acima do meu cargo.',
+                },
+              ]
+            : []),
+        )
+        .setFooter({ text: 'Se não é isso que você quer, desmarque a limpeza no painel anterior.' }),
+    ],
+    components: [
+      new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId(`builder:criar:${key}:${rawExtras}`)
+          .setLabel(`Sim, apagar ${alvos.canais.length} canais e montar`)
+          .setEmoji('🧨')
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId(`builder:painel:${key}:${rawExtras}`)
+          .setLabel('Voltar')
+          .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+          .setCustomId('builder:cancelar')
+          .setLabel('Cancelar')
+          .setStyle(ButtonStyle.Secondary),
+      ),
+    ],
+    flags: MessageFlags.Ephemeral,
+  };
+}
 
 async function create(interaction, [key, rawExtras]) {
   const template = TEMPLATES[key];
@@ -210,10 +307,12 @@ async function create(interaction, [key, rawExtras]) {
     );
   }
 
-  if (extras.includes('cargos') && !me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+  const limpando = extras.includes('limpar');
+
+  if ((extras.includes('cargos') || limpando) && !me.permissions.has(PermissionFlagsBits.ManageRoles)) {
     return replyError(
       interaction,
-      'Preciso da permissão **Gerenciar Cargos** para criar os cargos — ou desmarque essa opção no menu.',
+      'Preciso da permissão **Gerenciar Cargos** para mexer nos cargos — ou desmarque essa opção no menu.',
     );
   }
 
@@ -224,13 +323,23 @@ async function create(interaction, [key, rawExtras]) {
   await interaction.update({
     embeds: [
       embed.info(
-        `Construindo **${template.label}**… ${plan.channels} canais e ${plan.roles} cargos. Isso leva alguns segundos.`,
+        `${limpando ? 'Apagando o antigo e montando' : 'Construindo'} **${template.label}**… ` +
+          `${plan.channels} canais e ${plan.roles} cargos. Isso leva alguns segundos.`,
       ),
     ],
     components: [],
   });
 
-  const { created, failures } = await buildServer(interaction.guild, template, extras);
+  // O canal de onde o comando saiu fica por último: apagá-lo antes de responder
+  // deixaria a pessoa sem nenhum retorno do que aconteceu.
+  const origem = limpando && interaction.channelId ? new Set([interaction.channelId]) : new Set();
+
+  const { created, removed, failures, primeiroCanal, restam } = await buildServer(
+    interaction.guild,
+    template,
+    extras,
+    { preservar: origem },
+  );
 
   if (failures.length > 0) {
     logger.warn(`/construir: ${quantidade(failures.length, 'falha')} em ${interaction.guild.id}`);
@@ -240,16 +349,34 @@ async function create(interaction, [key, rawExtras]) {
     .base(template.color)
     .setTitle(`${template.emoji} Servidor construído`)
     .setDescription(
-      `Criei **${created.categories}** categorias, **${created.channels}** canais e **${created.roles}** cargos.`,
+      [
+        limpando
+          ? `Apaguei **${removed.channels}** canais e **${removed.roles}** cargos antigos.`
+          : null,
+        `Criei **${created.categories}** categorias, **${created.channels}** canais e **${created.roles}** cargos.`,
+      ]
+        .filter(Boolean)
+        .join('\n'),
     );
 
   if (failures.length > 0) {
     done.addFields({
-      name: `⚠️ ${quantidade(failures.length, 'item não criado', 'itens não criados')}`,
+      name: `⚠️ ${quantidade(failures.length, 'item pendente', 'itens pendentes')}`,
       value: failures.slice(0, 8).join('\n').slice(0, 1024),
     });
     done.setFooter({ text: 'O motivo mais comum é o cargo do bot estar abaixo na lista de cargos.' });
   }
 
-  await interaction.editReply({ embeds: [done], components: [] });
+  // A mensagem efêmera morre junto com o canal de onde veio o comando, então o
+  // relatório também vai para um canal novo — lá ele sobrevive à limpeza.
+  if (limpando && primeiroCanal) {
+    await primeiroCanal.send({ embeds: [done] }).catch(() => {});
+  }
+
+  await interaction.editReply({ embeds: [done], components: [] }).catch(() => {});
+
+  // Por último o canal de origem. Depois disto não há mais para onde responder.
+  for (const canal of restam) {
+    await canal.delete('Limpeza pedida no /construir').catch(() => {});
+  }
 }
