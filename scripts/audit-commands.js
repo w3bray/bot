@@ -202,8 +202,12 @@ try {
   const client = { commands: new Collection() };
   await loadCommands(client, path.join(raiz, 'src', 'commands'));
 
+  // 100 é o teto do Discord para comandos de barra globais, não uma escolha
+  // nossa. Já o total de rotas caiu de 400 para 393 quando as rotas duplicadas
+  // e pouco úteis saíram (ROTAS_REMOVIDAS abaixo) — o número aqui acompanha o
+  // que existe de verdade, senão a auditoria vira ruído permanente.
   conferir(client.commands.size === 100, `Esperava 100 comandos principais; encontrei ${client.commands.size}.`);
-  conferir(rotas.contarRotas(client.commands) === 400, `Esperava 400 rotas; encontrei ${rotas.contarRotas(client.commands)}.`);
+  conferir(rotas.contarRotas(client.commands) === 393, `Esperava 393 rotas; encontrei ${rotas.contarRotas(client.commands)}.`);
 
   const todasAsRotas = [...client.commands.values()].flatMap((command) => rotas.rotasDoComando(command));
   const conjuntoDeRotas = new Set(todasAsRotas);
@@ -329,7 +333,7 @@ try {
     for (const falha of falhas) console.error(`- ${falha}`);
     process.exitCode = 1;
   } else {
-    console.log('✅ 100 comandos principais, 400 rotas, nomes atuais e descrições revisadas.');
+    console.log('✅ 100 comandos principais, 393 rotas, nomes atuais e descrições revisadas.');
     console.log(`✅ ${nomesLocalizados} nomes de comandos, subcomandos e opções aparecem com acentuação pt-BR.`);
     console.log(`✅ ${rotulosComAcento} rótulos acentuados foram conferidos nos menus de opções.`);
     console.log(`✅ ${ROTAS_REMOVIDAS.length} rotas duplicadas ou pouco úteis foram removidas.`);

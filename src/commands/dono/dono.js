@@ -7,6 +7,7 @@ import {
   Routes,
   SlashCommandBuilder,
 } from 'discord.js';
+import { renderPanel } from '../../components/builder.js';
 import { colors, config } from '../../config.js';
 import { db } from '../../lib/db.js';
 import { embed, replyError, truncate } from '../../lib/embeds.js';
@@ -17,6 +18,7 @@ import { shardLabel, totalGuilds, totalMembers } from '../../lib/shard.js';
 import { corpoDosComandos, limparEscopoDeServidor } from '../../services/autodeploy.js';
 import { addBalance, formatMoney } from '../../services/economy.js';
 import { levelFromXp, xpForLevel } from '../../services/leveling.js';
+import { EXTRAS, MODELO_DO_DONO } from '../../services/templates.js';
 
 const PAGE_SIZE = 10;
 
@@ -96,6 +98,11 @@ export default {
         ),
     )
     .addSubcommand((sub) =>
+      sub
+        .setName('construir')
+        .setDescription('Monta o servidor no modelo SCAR ┼ SEC — categorias, canais e cargos.'),
+    )
+    .addSubcommand((sub) =>
       sub.setName('convite').setDescription('Gera o link para adicionar o bot em qualquer servidor.'),
     )
     .addSubcommand((sub) =>
@@ -110,6 +117,7 @@ export default {
     if (sub === 'registrar') return deploy(interaction, client);
     if (sub === 'moedas') return giveCoins(interaction);
     if (sub === 'nivel') return setLevel(interaction);
+    if (sub === 'construir') return construirModelo(interaction);
     if (sub === 'convite') return invite(interaction, client);
     if (sub === 'estatisticas') return stats(interaction, client);
   },
@@ -345,6 +353,30 @@ async function setLevel(interaction) {
     ],
     flags: MessageFlags.Ephemeral,
   });
+}
+
+/**
+ * Abre a prévia do modelo exclusivo do dono.
+ *
+ * O painel em si é o mesmo do /construir — muda só quem chega até ele. Como o
+ * comando inteiro é ownerOnly, quem clicar aqui já passou pela trava; o
+ * componente reconfere assim mesmo a cada clique.
+ */
+async function construirModelo(interaction) {
+  if (!interaction.inGuild()) {
+    return replyError(interaction, 'Use este comando dentro do servidor que você quer montar.');
+  }
+
+  const me = interaction.guild.members.me;
+
+  if (!me.permissions.has(PermissionFlagsBits.ManageChannels)) {
+    return replyError(
+      interaction,
+      'Preciso da permissão **Gerenciar Canais** neste servidor para construir.',
+    );
+  }
+
+  await interaction.reply(renderPanel(MODELO_DO_DONO, Object.keys(EXTRAS)));
 }
 
 // O conjunto sem Administrator: tudo que os 55 comandos precisam, e nada além.

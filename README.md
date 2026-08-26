@@ -233,6 +233,10 @@ comando abre um painel com a prévia do que será criado e um menu para incluir 
 cargos, os canais de voz e a área privada da equipe. Nada é apagado — o construtor só
 adiciona ao que já existe.
 
+Existe um quinto modelo, **SCAR ┼ SEC**, restrito ao dono do bot: 8 categorias, 36 canais
+e 7 cargos com os mesmos emojis e a mesma fonte itálica do servidor original. Ele não
+aparece no menu nem nas opções de `/construir` para mais ninguém — veja `/dono construir`.
+
 Exige **Gerenciar Servidor** de quem usa e **Gerenciar Canais** do bot (mais
 **Gerenciar Cargos**, se for criar os cargos).
 
@@ -318,6 +322,7 @@ WARN  Acesso negado: fulano (123…) tentou /dono em Servidor X (456…).
 | `/dono servidores` | Lista todos os servidores em que o bot está, com IDs |
 | `/dono sair` | Faz o bot sair de um servidor pelo ID |
 | `/dono registrar` | Atualiza os comandos globais e limpa registros antigos por servidor |
+| `/dono construir` | Monta o servidor no modelo **SCAR ┼ SEC** — 8 categorias, 36 canais, 7 cargos |
 | `/dono convite` | Gera o link para adicionar o bot em servidores ilimitados |
 | `/dono moedas` | Cria ou remove moedas de alguém |
 | `/dono nível` | Define o nível de alguém |
