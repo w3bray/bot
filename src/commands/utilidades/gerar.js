@@ -171,7 +171,7 @@ export default familia({
     },
     {
       name: 'lorem',
-      description: 'Texto de preenchimento em lorem ipsum.',
+      description: 'Gera texto de preenchimento em lorem ipsum.',
       options: [opt.inteiro('palavras', 'Quantas palavras', true, { min: 5, max: 400 })],
       run: ({ palavras }) => {
         const texto = Array.from({ length: palavras }, () => escolher(LOREM)).join(' ');

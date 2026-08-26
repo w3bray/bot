@@ -202,21 +202,6 @@ export default familia({
         `${pergunta ? `**${pergunta}**\n\n` : ''}${escolher(['✅ **Sim.**', '❌ **Não.**', '🤷 **Talvez.**'])}`,
     },
     {
-      name: 'porcentagem',
-      description: 'Sorteia uma porcentagem para qualquer coisa.',
-      options: [opt.texto('coisa', 'Sobre o quê', true, { max: 200 })],
-      run: ({ coisa }) => {
-        const valor = sortear(101);
-        const barra = '█'.repeat(Math.round(valor / 5)).padEnd(20, '░');
-        return `**${coisa}**\n\`${barra}\` **${valor}%**`;
-      },
-    },
-    {
-      name: 'letra',
-      description: 'Sorteia uma letra do alfabeto.',
-      run: () => `🔤 **${String.fromCharCode(65 + sortear(26))}**`,
-    },
-    {
       name: 'palavra',
       description: 'Sorteia uma palavra em português.',
       run: () =>
@@ -246,18 +231,6 @@ export default familia({
       name: 'hora',
       description: 'Sorteia um horário.',
       run: () => `🕐 **${String(sortear(24)).padStart(2, '0')}:${String(sortear(60)).padStart(2, '0')}**`,
-    },
-    {
-      name: 'duelo',
-      description: 'Coloca dois nomes para duelar.',
-      options: [
-        opt.texto('a', 'Primeiro nome', true, { max: 100 }),
-        opt.texto('b', 'Segundo nome', true, { max: 100 }),
-      ],
-      run: ({ a, b }) => {
-        const vencedor = sortear(2) ? a : b;
-        return `⚔️ **${a}** vs **${b}**\n\n🏆 Venceu: **${vencedor}**`;
-      },
     },
     {
       name: 'placar',
@@ -307,15 +280,6 @@ export default familia({
         const ganhou = resultado === escolha;
         return `Você: **${numero}** · Bot: **${bot}**\nSoma: **${soma}** (${resultado === 'par' ? 'par' : 'ímpar'})\n\n${ganhou ? '🎉 **Você ganhou!**' : '😔 **O bot ganhou.**'}`;
       },
-    },
-    {
-      name: 'senha-sorteio',
-      description: 'Sorteia um número secreto e mostra só para você.',
-      options: [opt.inteiro('maximo', 'Maior valor possível', true, { min: 2, max: 1_000_000 })],
-      run: ({ maximo }) => ({
-        embeds: [embed.base(colors.primary).setDescription(`🤫 Seu número: **${1 + sortear(maximo)}**`)],
-        flags: 64,
-      }),
     },
     {
       name: 'distribuicao',

@@ -282,6 +282,12 @@ CREATE TABLE IF NOT EXISTS preferencias (
 );
 `);
 
+// O tipo 'guardado' era um segundo sistema de anotações, idêntico a 'nota' em
+// tudo menos no rótulo. Ao unificá-los, os itens já salvos passam para 'nota'
+// em vez de ficarem órfãos — sem isso, quem usou o /pessoal anotar-rapido
+// perderia o acesso ao que guardou.
+db.prepare("UPDATE pessoal SET tipo = 'nota' WHERE tipo = 'guardado'").run();
+
 // Migrações leves: colunas adicionadas depois da primeira versão do bot.
 // `ALTER TABLE ... ADD COLUMN` falha se a coluna já existe, então ignoramos o erro.
 for (const [table, column, definition] of [

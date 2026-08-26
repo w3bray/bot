@@ -280,34 +280,12 @@ export default familia({
       },
     },
     {
-      name: 'anotar-rapido',
-      description: 'Guarda um link ou trecho para ver depois.',
-      options: [TEXTO('O que guardar')],
-      run: ({ texto }, interaction) =>
-        privado(`🔖 Guardado como \`#${criar(interaction, 'guardado', texto)}\`. Veja com \`/pessoal guardados\`.`),
-    },
-    {
-      name: 'guardados',
-      description: 'Mostra o que você guardou para ver depois.',
-      run: (_, interaction) => mostrar(interaction, 'guardado', '🔖 Guardados', false),
-    },
-    {
-      name: 'guardado-apagar',
-      description: 'Apaga um item guardado.',
-      options: [ID('O número do item')],
-      run: ({ id }, interaction) => {
-        exigirItem(interaction, id, 'guardado');
-        remover.run(id, ...chaves(interaction));
-        return privado(`🗑️ Item \`#${id}\` apagado.`);
-      },
-    },
-    {
       name: 'resumo',
-      description: 'Quanto você tem de cada coisa.',
+      description: 'Mostra quantas anotações, tarefas e metas você tem.',
       run: (_, interaction) => {
         const linhas = contar.all(...chaves(interaction));
         if (linhas.length === 0) throw aviso('Você ainda não guardou nada por aqui.');
-        const rotulos = { nota: '📝 Anotações', tarefa: '✅ Tarefas', meta: '🎯 Metas', guardado: '🔖 Guardados' };
+        const rotulos = { nota: '📝 Anotações', tarefa: '✅ Tarefas', meta: '🎯 Metas' };
         return {
           embeds: [
             embed.base(colors.primary)
