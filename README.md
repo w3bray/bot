@@ -229,16 +229,40 @@ Na mensagem de nível: `{user}`, `{username}`, `{level}`, `{server}`.
 | `/construir` | Monta categorias, canais e cargos a partir de um modelo pronto |
 
 Quatro modelos: **Segurança e tecnologia**, **Comunidade**, **Jogos** e **Estudos**. O
-comando abre um painel com a prévia do que será criado e um menu para incluir ou não os
-cargos, os canais de voz e a área privada da equipe. Nada é apagado — o construtor só
-adiciona ao que já existe.
+comando abre um painel com a prévia do que será criado e um menu para incluir ou não a
+limpeza, os cargos, os canais de voz e a área privada da equipe.
 
 Existe um quinto modelo, **SCAR ┼ SEC**, restrito ao dono do bot: 8 categorias, 36 canais
 e 7 cargos com os mesmos emojis e a mesma fonte itálica do servidor original. Ele não
 aparece no menu nem nas opções de `/construir` para mais ninguém — veja `/dono construir`.
 
 Exige **Gerenciar Servidor** de quem usa e **Gerenciar Canais** do bot (mais
-**Gerenciar Cargos**, se for criar os cargos).
+**Gerenciar Cargos**, se for mexer nos cargos).
+
+#### 🧨 A limpeza
+
+O construtor começa **apagando os canais e cargos que já existem** — a opção vem marcada.
+Desmarque `Apagar tudo que já existe antes de montar` no painel para só acrescentar ao que
+o servidor já tem.
+
+**O histórico de mensagens dos canais apagados some para sempre.** O Discord não guarda
+cópia e não existe lixeira: nem o dono do servidor recupera. Por isso o botão vermelho leva
+a uma segunda tela, que mostra os números reais (`vou apagar 34 canais e 9 cargos`) antes de
+qualquer coisa acontecer.
+
+O que a limpeza **não** consegue apagar, e continua de pé:
+
+| Item | Motivo |
+|---|---|
+| `@everyone` | não existe servidor sem ele |
+| Cargos de bots, integrações e do impulso | são `managed`; o Discord recusa |
+| Cargos acima do cargo do bot | fora do alcance dele |
+| Canal de regras e de avisos da moderação | um servidor de comunidade exige os dois |
+
+A ordem é **montar primeiro, apagar depois**. Se o rate limit ou uma queda interromper o
+processo no meio, o servidor fica com canais repetidos — que dá para resolver — em vez de
+vazio, que não dá. O canal de onde o comando saiu é o último a cair, para você chegar a ler
+o relatório; ele também é enviado para o primeiro canal novo, que sobrevive à limpeza.
 
 ### ✍️ Texto e código
 

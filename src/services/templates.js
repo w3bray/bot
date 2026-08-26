@@ -21,10 +21,14 @@ import { italico, negritoItalico } from '../lib/fontes.js';
  */
 
 export const EXTRAS = {
+  limpar: { label: 'Apagar tudo que já existe antes de montar', emoji: '🧨' },
   cargos: { label: 'Criar os cargos do modelo', emoji: '🎭' },
   voz: { label: 'Criar os canais de voz', emoji: '🔊' },
   staff: { label: 'Criar a área privada da equipe', emoji: '🔒' },
 };
+
+/** O que vem marcado quando o painel abre. A limpeza entra ligada. */
+export const EXTRAS_PADRAO = Object.keys(EXTRAS);
 
 /**
  * Atalhos do estilo 『SCAR ┼ SEC』.
@@ -448,22 +452,103 @@ export function planSummary(template, extras) {
 }
 
 /**
+ * O que a limpeza consegue apagar de verdade.
+ *
+ * Nem tudo é apagável, e tentar mesmo assim só gera erro:
+ *
+ *   - @everyone não existe sem o servidor;
+ *   - cargos `managed` pertencem a bots, integrações ou ao impulso do servidor
+ *     — o Discord recusa e devolve 50028;
+ *   - cargo acima do cargo mais alto do bot está fora do alcance dele;
+ *   - em servidor de comunidade, o canal de regras e o de avisos da moderação
+ *     não podem ser apagados enquanto o recurso estiver ligado.
+ *
+ * `ignorar` é o que acabou de ser criado: sem isso a limpeza apagaria o próprio
+ * servidor recém-montado.
+ */
+export function alvosDaLimpeza(guild, ignorar = new Set()) {
+  const me = guild.members.me;
+  const protegidos = new Set(
+    [guild.rulesChannel?.id, guild.publicUpdatesChannel?.id].filter(Boolean),
+  );
+
+  const canais = [...guild.channels.cache.values()].filter(
+    (canal) => !ignorar.has(canal.id) && !protegidos.has(canal.id) && canal.deletable,
+  );
+
+  const cargos = [...guild.roles.cache.values()].filter(
+    (cargo) =>
+      !ignorar.has(cargo.id) &&
+      cargo.id !== guild.id &&
+      !cargo.managed &&
+      cargo.position < me.roles.highest.position,
+  );
+
+  return { canais, cargos };
+}
+
+/**
+ * Apaga canais e cargos. Não tem volta: o Discord não guarda histórico de canal
+ * apagado em lugar nenhum, nem para o dono do servidor.
+ *
+ * Sequencial pelo mesmo motivo da criação — em paralelo o rate limit derruba
+ * metade das chamadas. Cada falha é anotada e a varredura continua.
+ */
+export async function limparServidor(guild, ignorar = new Set()) {
+  const { canais, cargos } = alvosDaLimpeza(guild, ignorar);
+  const removed = { channels: 0, roles: 0 };
+  const failures = [];
+
+  for (const canal of canais) {
+    try {
+      await canal.delete('Limpeza pedida no /construir');
+      removed.channels += 1;
+    } catch (error) {
+      failures.push(`não apaguei o canal **${canal.name}**: ${error.message}`);
+    }
+  }
+
+  for (const cargo of cargos) {
+    try {
+      await cargo.delete('Limpeza pedida no /construir');
+      removed.roles += 1;
+    } catch (error) {
+      failures.push(`não apaguei o cargo **${cargo.name}**: ${error.message}`);
+    }
+  }
+
+  return { removed, failures };
+}
+
+/**
  * Cria tudo no servidor, na ordem em que aparece no modelo.
  *
  * Sequencial de propósito: o Discord ordena canais pela ordem de criação, e
  * disparar tudo em paralelo embaralharia o resultado além de bater no rate
  * limit. Falhas individuais são coletadas em vez de abortar — melhor um
  * servidor 90% montado com um aviso do que nada.
+ *
+ * Com `limpar` nos extras, o antigo cai **depois** que o novo já está de pé.
+ * A ordem inversa seria mais bonita — canais nas posições certas desde o
+ * começo — e catastrófica: se o rate limit ou uma queda interrompesse o meio
+ * do caminho, o servidor ficaria vazio e sem nada no lugar. Assim, uma falha
+ * no meio deixa canais repetidos, que dá para resolver; nunca um servidor
+ * apagado, que não dá.
  */
-export async function buildServer(guild, template, extras) {
+export async function buildServer(guild, template, extras, { preservar = new Set() } = {}) {
   const me = guild.members.me;
   const created = { categories: 0, channels: 0, roles: 0 };
   const failures = [];
+  // Tudo que nascer daqui para a frente fica fora da mira da limpeza.
+  const novos = new Set();
+  // Primeiro canal de texto criado: é para lá que vai o relatório quando o
+  // canal de onde o comando saiu também está na lista para apagar.
+  let primeiroCanal = null;
 
   if (extras.includes('cargos')) {
     for (const role of template.roles) {
       try {
-        await guild.roles.create({
+        const criado = await guild.roles.create({
           name: role.name,
           color: role.color,
           hoist: role.hoist ?? false,
@@ -472,6 +557,7 @@ export async function buildServer(guild, template, extras) {
           permissions: (role.permissions ?? []).filter((flag) => me.permissions.has(flag)),
           reason: 'Modelo aplicado pelo /construir',
         });
+        novos.add(criado.id);
         created.roles += 1;
       } catch (error) {
         failures.push(`cargo **${role.name}**: ${error.message}`);
@@ -491,6 +577,7 @@ export async function buildServer(guild, template, extras) {
           : undefined,
         reason: 'Modelo aplicado pelo /construir',
       });
+      novos.add(parent.id);
       created.categories += 1;
     } catch (error) {
       failures.push(`categoria **${category.name}**: ${error.message}`);
@@ -499,7 +586,7 @@ export async function buildServer(guild, template, extras) {
 
     for (const channel of category.channels) {
       try {
-        await guild.channels.create({
+        const criado = await guild.channels.create({
           name: channel.name,
           type: channelType(category, channel, guild),
           parent: parent.id,
@@ -507,6 +594,8 @@ export async function buildServer(guild, template, extras) {
           userLimit: category.voice ? channel.limit : undefined,
           reason: 'Modelo aplicado pelo /construir',
         });
+        novos.add(criado.id);
+        if (!primeiroCanal && !category.voice && !category.staff) primeiroCanal = criado;
         created.channels += 1;
       } catch (error) {
         failures.push(`canal **${channel.name}**: ${error.message}`);
@@ -514,7 +603,25 @@ export async function buildServer(guild, template, extras) {
     }
   }
 
-  return { created, failures };
+  if (!extras.includes('limpar')) {
+    return { created, removed: { channels: 0, roles: 0 }, failures, primeiroCanal, restam: [] };
+  }
+
+  // Só agora, com o servidor novo de pé, o antigo cai. `preservar` segura o
+  // canal de onde veio o comando: sem ele não há para onde responder. Quem
+  // chamou apaga esses no fim, depois de entregar o relatório.
+  const limpeza = await limparServidor(guild, new Set([...novos, ...preservar]));
+  const restam = [...preservar]
+    .map((id) => guild.channels.cache.get(id))
+    .filter((canal) => canal?.deletable);
+
+  return {
+    created,
+    removed: limpeza.removed,
+    failures: [...failures, ...limpeza.failures],
+    primeiroCanal,
+    restam,
+  };
 }
 
 function channelType(category, channel, guild) {

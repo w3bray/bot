@@ -18,7 +18,7 @@ import { shardLabel, totalGuilds, totalMembers } from '../../lib/shard.js';
 import { corpoDosComandos, limparEscopoDeServidor } from '../../services/autodeploy.js';
 import { addBalance, formatMoney } from '../../services/economy.js';
 import { levelFromXp, xpForLevel } from '../../services/leveling.js';
-import { EXTRAS, MODELO_DO_DONO } from '../../services/templates.js';
+import { EXTRAS_PADRAO, MODELO_DO_DONO } from '../../services/templates.js';
 
 const PAGE_SIZE = 10;
 
@@ -376,7 +376,7 @@ async function construirModelo(interaction) {
     );
   }
 
-  await interaction.reply(renderPanel(MODELO_DO_DONO, Object.keys(EXTRAS)));
+  await interaction.reply(renderPanel(MODELO_DO_DONO, EXTRAS_PADRAO));
 }
 
 // O conjunto sem Administrator: tudo que os 55 comandos precisam, e nada além.
