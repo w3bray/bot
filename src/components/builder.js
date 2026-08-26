@@ -11,7 +11,16 @@ import { colors } from '../config.js';
 import { embed, replyError } from '../lib/embeds.js';
 import { logger } from '../lib/logger.js';
 import { quantidade } from '../lib/portugues.js';
-import { buildServer, EXTRAS, planSummary, selectedCategories, TEMPLATES } from '../services/templates.js';
+import { isOwner } from '../lib/owner.js';
+import {
+  buildServer,
+  EXTRAS,
+  exigeDono,
+  planSummary,
+  selectedCategories,
+  templatesVisiveis,
+  TEMPLATES,
+} from '../services/templates.js';
 
 // Os extras viajam dentro do custom_id, que é limitado a 100 caracteres e usa
 // ":" como separador. Juntamos com "." e reservamos "nada" para a lista vazia,
@@ -21,13 +30,19 @@ const SEM_EXTRAS = 'nada';
 const encodeExtras = (extras) => (extras.length > 0 ? extras.join('.') : SEM_EXTRAS);
 const decodeExtras = (raw) => (!raw || raw === SEM_EXTRAS ? [] : raw.split('.'));
 
-/** Menu inicial: escolher o modelo. */
-export function renderPicker() {
+/**
+ * Menu inicial: escolher o modelo.
+ *
+ * `dono` decide se os modelos restritos entram na lista. Não é a trava — a
+ * trava é o `permitido()` abaixo, checado a cada clique — mas evita mostrar
+ * para os outros um modelo que eles não conseguiriam usar.
+ */
+export function renderPicker(dono = false) {
   const menu = new StringSelectMenuBuilder()
     .setCustomId('builder:modelo')
     .setPlaceholder('Escolha o modelo do servidor…')
     .addOptions(
-      Object.entries(TEMPLATES).map(([key, template]) =>
+      templatesVisiveis(dono).map(([key, template]) =>
         new StringSelectMenuOptionBuilder()
           .setValue(key)
           .setLabel(template.label)
@@ -61,9 +76,13 @@ export function renderPanel(templateKey, extras) {
 
   const tree = selectedCategories(template, extras)
     .map((category) => {
-      const prefix = category.voice ? '🔊' : category.staff ? '🔒' : '#';
+      // Modelos estilizados já trazem o emoji no nome do canal; repetir um
+      // prefixo ali só polui a prévia.
+      const prefix = /^[a-z]/i.test(category.channels[0]?.name ?? '')
+        ? (category.voice ? '🔊 ' : category.staff ? '🔒 ' : '# ')
+        : '';
       const channels = category.channels
-        .map((channel) => `${prefix} ${channel.name}`)
+        .map((channel) => `${prefix}${channel.name}`)
         .join(' · ');
       return `**${category.name}**\n${channels}`;
     })
@@ -124,6 +143,19 @@ export function renderPanel(templateKey, extras) {
   };
 }
 
+/**
+ * Todo caminho que toca um modelo passa por aqui.
+ *
+ * Um custom_id é texto que sai do bot e volta pelo cliente — dá para forjar.
+ * Por isso o modelo restrito é rechecado em cada clique, e não só na hora de
+ * montar o menu. Fora do modelo restrito, a resposta é a mesma de um modelo
+ * inexistente: quem não é dono não descobre nem que ele existe.
+ */
+function permitido(interaction, key) {
+  if (!TEMPLATES[key]) return false;
+  return !exigeDono(key) || isOwner(interaction.user.id);
+}
+
 export default {
   id: 'builder',
 
@@ -136,13 +168,13 @@ export default {
     }
 
     if (action === 'voltar') {
-      const picker = renderPicker();
+      const picker = renderPicker(isOwner(interaction.user.id));
       return interaction.update({ embeds: picker.embeds, components: picker.components });
     }
 
     if (action === 'modelo') {
       const key = interaction.values[0];
-      if (!TEMPLATES[key]) return replyError(interaction, 'Esse modelo não existe mais.');
+      if (!permitido(interaction, key)) return replyError(interaction, 'Esse modelo não existe mais.');
       // Padrão generoso: tudo marcado, e quem não quiser desmarca no menu.
       const panel = renderPanel(key, Object.keys(EXTRAS));
       return interaction.update({ embeds: panel.embeds, components: panel.components });
@@ -150,12 +182,15 @@ export default {
 
     if (action === 'extras') {
       const [key] = args;
-      if (!TEMPLATES[key]) return replyError(interaction, 'Esse modelo não existe mais.');
+      if (!permitido(interaction, key)) return replyError(interaction, 'Esse modelo não existe mais.');
       const panel = renderPanel(key, interaction.values);
       return interaction.update({ embeds: panel.embeds, components: panel.components });
     }
 
     if (action === 'criar') {
+      if (!permitido(interaction, args[0])) {
+        return replyError(interaction, 'Esse modelo não existe mais.');
+      }
       return create(interaction, args);
     }
   },

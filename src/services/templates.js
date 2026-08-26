@@ -1,4 +1,5 @@
 import { ChannelType, PermissionFlagsBits } from 'discord.js';
+import { italico, negritoItalico } from '../lib/fontes.js';
 
 /**
  * Modelos de servidor usados pelo /construir.
@@ -13,6 +14,10 @@ import { ChannelType, PermissionFlagsBits } from 'discord.js';
  *
  *   voice  → cria canais de voz em vez de texto
  *   staff  → a categoria inteira nasce invisível para @everyone
+ *
+ * Um modelo com `dono: true` não aparece para ninguém além do dono do bot: fica
+ * fora do menu de escolha, fora das opções do /construir e é recusado no
+ * componente mesmo que alguém forje o clique.
  */
 
 export const EXTRAS = {
@@ -21,7 +26,141 @@ export const EXTRAS = {
   staff: { label: 'Criar a área privada da equipe', emoji: '🔒' },
 };
 
+/**
+ * Atalhos do estilo 『SCAR ┼ SEC』.
+ *
+ * Categoria: `◆ · <emoji> 𝑵𝑶𝑴𝑬` em negrito itálico.
+ * Canal:     `<emoji>┊𝑛𝑜𝑚𝑒` em itálico, com a barra vertical pontilhada
+ *            (U+250A) separando — o Discord não converte esse caractere em
+ *            hífen como faria com um espaço.
+ */
+const cat = (emoji, nome, resto = {}) => ({
+  name: `◆ · ${emoji} ${negritoItalico(nome)}`,
+  ...resto,
+});
+
+const can = (emoji, nome, topic) => ({
+  name: `${emoji}┊${italico(nome)}`,
+  ...(topic ? { topic } : {}),
+});
+
 export const TEMPLATES = {
+  /**
+   * Réplica do 『SCAR ┼ SEC』 — exclusivo do dono do bot.
+   *
+   * Categorias, canais, emojis e a fonte itálica são os mesmos do servidor
+   * original. Os cargos são a única parte inferida: a lista completa não
+   * aparecia nas capturas usadas como referência.
+   */
+  'scar-sec': {
+    label: 'SCAR ┼ SEC',
+    emoji: '⚜️',
+    short: 'Réplica exata do servidor original — só o dono do bot usa',
+    color: 0x1c1c1e,
+    dono: true,
+    categories: [
+      cat('♛', 'DIRECTIVES', {
+        channels: [
+          can('📜', 'diretrizes', 'As regras da casa. Leia antes de participar.'),
+          { ...can('📢', 'comunicados', 'Avisos oficiais da equipe.'), announcement: true },
+          can('🏆', 'membros-oficiais', 'Quem faz parte oficialmente.'),
+          can('👁️', 'fyp', 'Destaques e o que está em alta.'),
+        ],
+      }),
+      cat('♛', 'COMMUNITY', {
+        channels: [
+          can('💬', 'chat-geral', 'Conversa livre.'),
+          can('📸', 'midia', 'Fotos, prints e vídeos.'),
+          can('🔔', 'suporte', 'Precisa de ajuda? Abra aqui.'),
+          can('🤖', 'inteligencia-artificial', 'IA: ferramentas, prompts e resultados.'),
+          can('🕊️', 'versiculos', 'Versículos e reflexões.'),
+        ],
+      }),
+      cat('💰', 'MARKETPLACE', {
+        channels: [
+          can('🛍️', 'loja', 'Catálogo de produtos e serviços.'),
+          can('💎', 'planos-vip', 'O que cada plano inclui.'),
+          can('💳', 'comprar', 'Formas de pagamento e como fechar.'),
+          can('📦', 'meus-pedidos', 'Acompanhe o que você comprou.'),
+          can('🎁', 'ofertas', 'Promoções e cupons.'),
+          can('🎫', 'suporte-compras', 'Problema com um pedido? Fale aqui.'),
+        ],
+      }),
+      cat('♛', 'ACADEMY', {
+        channels: [
+          can('📚', 'biblioteca', 'Acervo de materiais.'),
+          can('💻', 'programacao', 'Código, linguagens e projetos.'),
+          can('📝', 'materiais-e-resumos', 'Resumos e anotações compartilhadas.'),
+          can('💡', 'duvidas-e-debates', 'Pergunte e discuta sem medo.'),
+          can('📖', 'estudos', 'Trilhas, metas e progresso.'),
+        ],
+      }),
+      cat('♟️', 'INTELLIGENCE', {
+        channels: [
+          can('⚜️', 'ataques', 'Registro e análise de incidentes.'),
+          can('📁', 'relatorios', 'Relatórios completos.'),
+          can('🚨', 'alertas', 'Alertas urgentes.'),
+          can('🔍', 'investigacao', 'Apurações em andamento.'),
+        ],
+      }),
+      cat('🎟️', 'LOUNGE', {
+        voice: true,
+        channels: [
+          can('🔊', 'lounge-principal'),
+          can('🎙️', 'estudio-de-musica'),
+          can('🔒', 'sala-privada-2'),
+          can('🎮', 'jogos'),
+        ],
+      }),
+      cat('🤝', 'PARCERIAS', {
+        channels: [
+          can('📜', 'requisitos-parceria', 'O que pedimos para fechar parceria.'),
+          can('📩', 'solicitar-parceria', 'Mande sua proposta por aqui.'),
+          can('💎', 'parceiros-oficiais', 'Quem já é parceiro.'),
+        ],
+      }),
+      cat('🔱', 'STAFF', {
+        staff: true,
+        channels: [
+          can('💬', 'staff-chat', 'Conversa interna da equipe.'),
+          can('📊', 'vendas', 'Acompanhamento de vendas.'),
+          can('🎫', 'tickets', 'Atendimentos abertos.'),
+          can('📋', 'logs', 'Registro automático de moderação.'),
+          can('⚙️', 'bot-control', 'Comandos administrativos do bot.'),
+        ],
+      }),
+    ],
+    roles: [
+      {
+        name: `◆ · 🔱 ${negritoItalico('FOUNDER')}`,
+        color: 0xffffff,
+        hoist: true,
+        permissions: [PermissionFlagsBits.Administrator],
+      },
+      {
+        name: `◆ · ♛ ${negritoItalico('ADMIN')}`,
+        color: 0xe74c3c,
+        hoist: true,
+        permissions: [PermissionFlagsBits.Administrator],
+      },
+      {
+        name: `◆ · ♟️ ${negritoItalico('MODERADOR')}`,
+        color: 0x3498db,
+        hoist: true,
+        permissions: [
+          PermissionFlagsBits.KickMembers,
+          PermissionFlagsBits.BanMembers,
+          PermissionFlagsBits.ModerateMembers,
+          PermissionFlagsBits.ManageMessages,
+        ],
+      },
+      { name: `◆ · 💎 ${negritoItalico('VIP')}`, color: 0xf1c40f, hoist: true },
+      { name: `◆ · 🤝 ${negritoItalico('PARCEIRO')}`, color: 0x9b59b6, hoist: true },
+      { name: `◆ · 🏆 ${negritoItalico('MEMBRO OFICIAL')}`, color: 0x2ecc71 },
+      { name: `◆ · 👁️ ${negritoItalico('MEMBRO')}`, color: 0x95a5a6 },
+    ],
+  },
+
   hacking: {
     label: 'Segurança e tecnologia',
     emoji: '🔐',
@@ -270,6 +409,24 @@ export const TEMPLATES = {
     ],
   },
 };
+
+/** O modelo exclusivo do dono, para quem precisa abrir direto nele. */
+export const MODELO_DO_DONO = 'scar-sec';
+
+/** Os modelos que qualquer administrador de servidor pode usar. */
+export function templatesPublicos() {
+  return Object.entries(TEMPLATES).filter(([, template]) => !template.dono);
+}
+
+/** Os modelos visíveis para quem está usando — o dono enxerga todos. */
+export function templatesVisiveis(dono) {
+  return dono ? Object.entries(TEMPLATES) : templatesPublicos();
+}
+
+/** Diz se o modelo é restrito ao dono do bot. */
+export function exigeDono(key) {
+  return TEMPLATES[key]?.dono === true;
+}
 
 /** As categorias que serão realmente criadas, dado o modelo e os extras. */
 export function selectedCategories(template, extras) {
