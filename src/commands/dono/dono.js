@@ -100,7 +100,7 @@ export default {
     .addSubcommand((sub) =>
       sub
         .setName('construir')
-        .setDescription('Monta o servidor no modelo SCAR ┼ SEC — categorias, canais e cargos.'),
+        .setDescription('Monta o servidor no modelo completo — categorias, canais e cargos.'),
     )
     .addSubcommand((sub) =>
       sub.setName('convite').setDescription('Gera o link para adicionar o bot em qualquer servidor.'),

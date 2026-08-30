@@ -31,124 +31,136 @@ export const EXTRAS = {
 export const EXTRAS_PADRAO = Object.keys(EXTRAS);
 
 /**
- * Atalhos do estilo 『SCAR ┼ SEC』.
+ * Atalhos do modelo estilizado.
  *
- * Categoria: `◆ · <emoji> 𝑵𝑶𝑴𝑬` em negrito itálico.
- * Canal:     `<emoji>┊𝑛𝑜𝑚𝑒` em itálico, com a barra vertical pontilhada
- *            (U+250A) separando — o Discord não converte esse caractere em
- *            hífen como faria com um espaço.
+ * Categoria: `<emoji> | 𝑁𝑂𝑀𝐸` — o nome em itálico matemático, que é o que
+ *            passa por "fonte diferente" no Discord.
+ * Canal:     `<emoji> · nome` em texto normal, com acento.
+ *
+ * O espaço em volta do `·` é U+2005 (espaço de um quarto de quadratim), não o
+ * espaço comum. Em nome de canal de texto o Discord troca espaço ASCII por
+ * hífen — daí todo canal do mundo aparecer como `chat-geral` — e é justamente
+ * por usarem espaços fora do ASCII que os servidores estilizados conseguem
+ * exibir `📷 · mídias` com espaço de verdade.
  */
+const ESPACO = ' ';
+
 const cat = (emoji, nome, resto = {}) => ({
-  name: `◆ · ${emoji} ${negritoItalico(nome)}`,
+  name: `${emoji} | ${italico(nome)}`,
   ...resto,
 });
 
 const can = (emoji, nome, topic) => ({
-  name: `${emoji}┊${italico(nome)}`,
+  name: `${emoji}${ESPACO}·${ESPACO}${nome}`,
   ...(topic ? { topic } : {}),
 });
 
 export const TEMPLATES = {
   /**
-   * Réplica do 『SCAR ┼ SEC』 — exclusivo do dono do bot.
+   * Servidor completo: comunidade, loja, academia, área VIP e staff.
    *
-   * Categorias, canais, emojis e a fonte itálica são os mesmos do servidor
-   * original. Os cargos são a única parte inferida: a lista completa não
-   * aparecia nas capturas usadas como referência.
+   * Nomes de categoria em itálico matemático e prefixo de emoji em cada canal,
+   * no estilo dos servidores estilizados. Os cargos são a única parte inferida:
+   * a lista deles não aparecia nas capturas usadas como referência.
    */
-  'scar-sec': {
-    label: 'SCAR ┼ SEC',
-    emoji: '⚜️',
-    short: 'Réplica exata do servidor original — só o dono do bot usa',
-    color: 0x1c1c1e,
+  completo: {
+    label: 'Servidor completo',
+    emoji: '\u{1F48E}',
+    short: 'Comunidade, loja, academia, área VIP e staff — 9 categorias',
+    color: 0x2b0b12,
     dono: true,
     categories: [
-      cat('♛', 'DIRECTIVES', {
+      cat('\u265B', 'DIRECTIVES', {
         channels: [
-          can('📜', 'diretrizes', 'As regras da casa. Leia antes de participar.'),
-          { ...can('📢', 'comunicados', 'Avisos oficiais da equipe.'), announcement: true },
-          can('🏆', 'membros-oficiais', 'Quem faz parte oficialmente.'),
-          can('👁️', 'fyp', 'Destaques e o que está em alta.'),
+          can('\u{1F4DC}', 'diretrizes', 'As regras da casa. Leia antes de participar.'),
+          { ...can('\u{1F4E3}', 'comunicados', 'Avisos oficiais da equipe.'), announcement: true },
+          can('\u{1F3C6}', 'membros-oficiais', 'Quem faz parte oficialmente.'),
+          can('\u{1F5BC}\uFE0F', 'pfp', 'Fotos de perfil e banners.'),
         ],
       }),
-      cat('♛', 'COMMUNITY', {
+      cat('\u{1F48E}', 'VIP LOUNGE', {
         channels: [
-          can('💬', 'chat-geral', 'Conversa livre.'),
-          can('📸', 'midia', 'Fotos, prints e vídeos.'),
-          can('🔔', 'suporte', 'Precisa de ajuda? Abra aqui.'),
-          can('🤖', 'inteligencia-artificial', 'IA: ferramentas, prompts e resultados.'),
-          can('🕊️', 'versiculos', 'Versículos e reflexões.'),
+          can('\u{1F4B3}', 'chat-exclusivo', 'Conversa reservada a quem tem plano.'),
+          can('\u{1F537}', 'materiais-vips', 'Arquivos e conteúdos exclusivos.'),
+          can('\u{1F38A}', 'benefícios-vip', 'O que cada plano dá direito.'),
         ],
       }),
-      cat('💰', 'MARKETPLACE', {
+      cat('\u265F\uFE0F', 'INTELLIGENCE', {
         channels: [
-          can('🛍️', 'loja', 'Catálogo de produtos e serviços.'),
-          can('💎', 'planos-vip', 'O que cada plano inclui.'),
-          can('💳', 'comprar', 'Formas de pagamento e como fechar.'),
-          can('📦', 'meus-pedidos', 'Acompanhe o que você comprou.'),
-          can('🎁', 'ofertas', 'Promoções e cupons.'),
-          can('🎫', 'suporte-compras', 'Problema com um pedido? Fale aqui.'),
+          can('\u{1F3AF}', 'ataques', 'Registro e análise de incidentes.'),
+          can('\u{1F4D2}', 'relatórios', 'Relatórios completos.'),
+          can('\u{1F386}', 'alertas', 'Alertas urgentes.'),
+          can('\u{1F50E}', 'investigação', 'Apurações em andamento.'),
         ],
       }),
-      cat('♛', 'ACADEMY', {
+      cat('\u{1F310}', 'COMMUNITY', {
         channels: [
-          can('📚', 'biblioteca', 'Acervo de materiais.'),
-          can('💻', 'programacao', 'Código, linguagens e projetos.'),
-          can('📝', 'materiais-e-resumos', 'Resumos e anotações compartilhadas.'),
-          can('💡', 'duvidas-e-debates', 'Pergunte e discuta sem medo.'),
-          can('📖', 'estudos', 'Trilhas, metas e progresso.'),
+          can('\u{1F4AC}', 'chat-geral', 'Conversa livre.'),
+          can('\u{1F4F7}', 'mídias', 'Fotos, prints e vídeos.'),
+          can('\u{1F3AC}', 'edits', 'Edições e montagens.'),
+          can('\u{1F9F0}', 'suporte', 'Precisa de ajuda? Abra aqui.'),
+          can('\u{1F4F1}', 'download-tiktok', 'Baixe vídeos do TikTok pelo bot.'),
+          can('\u{1F54A}\uFE0F', 'versículos', 'Versículos e reflexões.'),
         ],
       }),
-      cat('♟️', 'INTELLIGENCE', {
+      cat('\u{1F4B0}', 'MARKETPLACE', {
         channels: [
-          can('⚜️', 'ataques', 'Registro e análise de incidentes.'),
-          can('📁', 'relatorios', 'Relatórios completos.'),
-          can('🚨', 'alertas', 'Alertas urgentes.'),
-          can('🔍', 'investigacao', 'Apurações em andamento.'),
+          can('\u{1F6CD}\uFE0F', 'loja', 'Catálogo de produtos e serviços.'),
+          can('\u{1F3C5}', 'planos-vip', 'O que cada plano inclui.'),
+          can('\u{1F6D2}', 'comprar', 'Formas de pagamento e como fechar.'),
+          can('\u{1F680}', 'meus-pedidos', 'Acompanhe o que você comprou.'),
+          can('\u{1F381}', 'ofertas', 'Promoções e cupons.'),
         ],
       }),
-      cat('🎟️', 'LOUNGE', {
+      cat('\u{1F393}', 'ACADEMY', {
+        channels: [
+          can('\u{1F4DA}', 'biblioteca', 'Acervo de materiais.'),
+          can('\u{1F4BB}', 'programação', 'Código, linguagens e projetos.'),
+          can('\u{1F4DD}', 'materiais-e-resumos', 'Resumos e anotações compartilhadas.'),
+          can('\u{1F4A1}', 'dúvidas-e-debates', 'Pergunte e discuta sem medo.'),
+          can('\u{1F4D6}', 'estudos', 'Trilhas, metas e progresso.'),
+        ],
+      }),
+      cat('\u{1F3A7}', 'LOUNGE', {
         voice: true,
         channels: [
-          can('🔊', 'lounge-principal'),
-          can('🎙️', 'estudio-de-musica'),
-          can('🔒', 'sala-privada-2'),
-          can('🎮', 'jogos'),
+          can('\u{1F50A}', 'lounge principal'),
+          can('\u{1F3B5}', 'estúdio de música'),
+          can('\u{1F512}', 'call invisível 2'),
         ],
       }),
-      cat('🤝', 'PARCERIAS', {
+      cat('\u{1F91D}', 'PARCERIAS', {
         channels: [
-          can('📜', 'requisitos-parceria', 'O que pedimos para fechar parceria.'),
-          can('📩', 'solicitar-parceria', 'Mande sua proposta por aqui.'),
-          can('💎', 'parceiros-oficiais', 'Quem já é parceiro.'),
+          can('\u{1F4C4}', 'requisitos-parceria', 'O que pedimos para fechar parceria.'),
+          can('\u{1F4B3}', 'solicitar-parceria', 'Mande sua proposta por aqui.'),
+          can('\u2705', 'parceiros-oficiais', 'Quem já é parceiro.'),
         ],
       }),
-      cat('🔱', 'STAFF', {
+      cat('\u2728', 'STAFF', {
         staff: true,
         channels: [
-          can('💬', 'staff-chat', 'Conversa interna da equipe.'),
-          can('📊', 'vendas', 'Acompanhamento de vendas.'),
-          can('🎫', 'tickets', 'Atendimentos abertos.'),
-          can('📋', 'logs', 'Registro automático de moderação.'),
-          can('⚙️', 'bot-control', 'Comandos administrativos do bot.'),
+          can('\u{1F4AC}', 'chat-staff', 'Conversa interna da equipe.'),
+          can('\u{1F4CA}', 'vendas', 'Acompanhamento de vendas.'),
+          can('\u{1F39F}\uFE0F', 'tickets', 'Atendimentos abertos.'),
+          can('\u{1F4C1}', 'logs', 'Registro automático de moderação.'),
         ],
       }),
     ],
     roles: [
       {
-        name: `◆ · 🔱 ${negritoItalico('FOUNDER')}`,
+        name: `\u{1F451} | ${negritoItalico('FOUNDER')}`,
         color: 0xffffff,
         hoist: true,
         permissions: [PermissionFlagsBits.Administrator],
       },
       {
-        name: `◆ · ♛ ${negritoItalico('ADMIN')}`,
+        name: `\u265B | ${negritoItalico('ADMIN')}`,
         color: 0xe74c3c,
         hoist: true,
         permissions: [PermissionFlagsBits.Administrator],
       },
       {
-        name: `◆ · ♟️ ${negritoItalico('MODERADOR')}`,
+        name: `\u265F\uFE0F | ${negritoItalico('MODERADOR')}`,
         color: 0x3498db,
         hoist: true,
         permissions: [
@@ -158,10 +170,10 @@ export const TEMPLATES = {
           PermissionFlagsBits.ManageMessages,
         ],
       },
-      { name: `◆ · 💎 ${negritoItalico('VIP')}`, color: 0xf1c40f, hoist: true },
-      { name: `◆ · 🤝 ${negritoItalico('PARCEIRO')}`, color: 0x9b59b6, hoist: true },
-      { name: `◆ · 🏆 ${negritoItalico('MEMBRO OFICIAL')}`, color: 0x2ecc71 },
-      { name: `◆ · 👁️ ${negritoItalico('MEMBRO')}`, color: 0x95a5a6 },
+      { name: `\u{1F48E} | ${negritoItalico('VIP')}`, color: 0xf1c40f, hoist: true },
+      { name: `\u{1F91D} | ${negritoItalico('PARCEIRO')}`, color: 0x9b59b6, hoist: true },
+      { name: `\u{1F3C6} | ${negritoItalico('MEMBRO OFICIAL')}`, color: 0x2ecc71 },
+      { name: `\u{1F310} | ${negritoItalico('MEMBRO')}`, color: 0x95a5a6 },
     ],
   },
 
@@ -415,7 +427,7 @@ export const TEMPLATES = {
 };
 
 /** O modelo exclusivo do dono, para quem precisa abrir direto nele. */
-export const MODELO_DO_DONO = 'scar-sec';
+export const MODELO_DO_DONO = 'completo';
 
 /** Os modelos que qualquer administrador de servidor pode usar. */
 export function templatesPublicos() {
